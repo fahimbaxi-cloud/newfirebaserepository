@@ -214,9 +214,9 @@ export default function CustomerHome() {
                 const dateKeyByDiff = String(diffDays + 1);
                 const dateKeyByFormat = format(targetDate, 'yyyy-MM-dd');
                 const dayItems = assignments[dateKeyByDiff] || assignments[dateKeyByFormat] || [];
-                isCorrectDate = true;
+                isCorrectDate = dayItems.length > 0;
               } else {
-                isCorrectDate = true;
+                isCorrectDate = (pkg.items && pkg.items.length > 0) || false;
               }
             } else {
               const targetMonthStr = format(targetDate, 'MMMM yyyy');
@@ -226,9 +226,9 @@ export default function CustomerHome() {
                 if (assignments) {
                   const dateKey = format(targetDate, 'yyyy-MM-dd');
                   const dayItems = assignments[dateKey] || [];
-                  isCorrectDate = true;
+                  isCorrectDate = dayItems.length > 0;
                 } else {
-                  isCorrectDate = true;
+                  isCorrectDate = (pkg.items && pkg.items.length > 0) || false;
                 }
               } else {
                 isCorrectDate = false;
