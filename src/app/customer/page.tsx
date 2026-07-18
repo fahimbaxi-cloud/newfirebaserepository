@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, Sparkles, CalendarIcon, ChevronRight, Truck, Clock, Package as PackageIcon, Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { format, getMonth, getYear, isValid, addDays, startOfDay, parse, subDays, setHours, parseISO } from 'date-fns';
+import { format, getMonth, getYear, isValid, addDays, startOfDay, parse, subDays, setHours, parseISO, isSameDay, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -45,6 +45,8 @@ export default function CustomerHome() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [monthlyMonth, setMonthlyMonth] = useState<number>(getMonth(new Date()));
   const [monthlyYear, setMonthlyYear] = useState<number>(getYear(new Date()));
+  const [deliveryDate, setDeliveryDate] = useState<Date>(new Date());
+  const [isDeliveryDatePickerOpen, setIsDeliveryDatePickerOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -191,6 +193,145 @@ export default function CustomerHome() {
     })[0];
   }, [currentUser, allOrders]);
 
+  const deliveriesForSelectedDate = useMemo(() => {
+    if (!currentUser || !allOrders || !allPackages) return [];
+    
+    const customerOrders = allOrders.filter(o => o.customerId === currentUser.id && o.status !== 'Cancelled');
+    
+    return customerOrders.filter(o => {
+      let isCorrectDate = false;
+      const targetDate = deliveryDate;
+      
+      if (o.type === 'Subscription') {
+        const pkg = allPackages.find(p => p.name === o.packageName);
+        if (pkg && (pkg.type === 'monthly' || pkg.type === 'scheme' || pkg.type === 'daily')) {
+          try {
+            if (pkg.type === 'scheme') {
+              const assignments = pkg.schemeAssignments as any;
+              if (assignments) {
+                const startDate = pkg.startDate ? startOfDay(parseISO(pkg.startDate)) : startOfDay(new Date());
+                const diffDays = differenceInDays(startOfDay(targetDate), startDate);
+                const dateKeyByDiff = String(diffDays + 1);
+                const dateKeyByFormat = format(targetDate, 'yyyy-MM-dd');
+                const dayItems = assignments[dateKeyByDiff] || assignments[dateKeyByFormat] || [];
+                isCorrectDate = dayItems.length > 0;
+              } else {
+                isCorrectDate = pkg.items && pkg.items.length > 0;
+              }
+            } else {
+              const targetMonthStr = format(targetDate, 'MMMM yyyy');
+              const isMonthCorrect = pkg.type === 'daily' || pkg.dateContext === targetMonthStr;
+              if (isMonthCorrect) {
+                const assignments = (pkg as any).monthlyAssignments;
+                if (assignments) {
+                  const dateKey = format(targetDate, 'yyyy-MM-dd');
+                  const dayItems = assignments[dateKey] || [];
+                  isCorrectDate = dayItems.length > 0;
+                } else {
+                  isCorrectDate = pkg.items && pkg.items.length > 0;
+                }
+              } else {
+                isCorrectDate = false;
+              }
+            }
+          } catch (e) {
+            console.error(e);
+            isCorrectDate = false;
+          }
+        }
+      } else if (o.type === 'Daily') {
+        if (o.referenceDate) {
+          const orderDate = parseISO(o.referenceDate);
+          const targetDeliveryDate = addDays(orderDate, 1);
+          isCorrectDate = isSameDay(targetDeliveryDate, targetDate);
+        } else {
+          isCorrectDate = false;
+        }
+      } else {
+        const orderDate = o.referenceDate ? parseISO(o.referenceDate) : (typeof o.createdAt === 'string' ? parseISO(o.createdAt) : o.createdAt);
+        isCorrectDate = !targetDate || isSameDay(orderDate, targetDate);
+      }
+      
+      return isCorrectDate;
+    });
+  }, [currentUser, allOrders, allPackages, deliveryDate]);
+
+  const getDeliveryItems = (order: Order, targetDate: Date = new Date()) => {
+    if (!allPackages || !menu) return [];
+    const pkg = allPackages.find((p: any) => p.name === order.packageName);
+    if (pkg) {
+      if (pkg.type === 'monthly' || pkg.type === 'scheme') {
+        const assignments = pkg.type === 'monthly' ? (pkg as any).monthlyAssignments : pkg.schemeAssignments as any;
+        if (assignments) {
+          let dayItems: any[] = [];
+          if (pkg.type === 'monthly') {
+            const dateKey = format(targetDate, 'yyyy-MM-dd');
+            dayItems = assignments[dateKey] || [];
+          } else if (pkg.type === 'scheme') {
+            const startDate = pkg.startDate ? startOfDay(parseISO(pkg.startDate)) : startOfDay(new Date());
+            const target = startOfDay(targetDate);
+            const diffDays = differenceInDays(target, startDate);
+            const dateKeyByDiff = String(diffDays + 1);
+            const dateKeyByFormat = format(targetDate, 'yyyy-MM-dd');
+            dayItems = assignments[dateKeyByDiff] || assignments[dateKeyByFormat] || [];
+          }
+          
+          if (dayItems.length > 0) {
+            return dayItems.map((id: string) => {
+              const menuItem = menu.find((m: any) => m.id === id);
+              return { name: menuItem?.name || "Unknown Item", type: menuItem?.type || "Veg", quantity: order.packageQuantity || 1, show: menuItem?.show };
+            }).filter((item: any) => item.show !== false);
+          }
+          return [];
+        }
+        if (pkg.items && pkg.items.length > 0) {
+          const dayOfMonth = targetDate.getDate();
+          const idx = (dayOfMonth - 1) % pkg.items.length;
+          const id = pkg.items[idx];
+          const menuItem = menu.find((m: any) => m.id === id);
+          if (menuItem && menuItem.show !== false) {
+            return [{ name: menuItem.name || "Unknown Item", type: menuItem.type || "Veg", quantity: order.packageQuantity || 1 }];
+          }
+          return [];
+        }
+      } else if (pkg.items) {
+        return pkg.items.map((id: string) => {
+          const menuItem = menu.find((m: any) => m.id === id);
+          return { name: menuItem?.name || "Unknown Item", type: menuItem?.type || "Veg", quantity: order.packageQuantity || 1, show: menuItem?.show };
+        }).filter((item: any) => item.show !== false);
+      }
+    }
+    return (order.items || []).filter((item: any) => {
+      const menuItem = menu.find((m: any) => m.id === item.menuItemId || m.name === item.name);
+      return !menuItem || menuItem.show !== false;
+    });
+  };
+
+  const getDeliveryStatus = (order: Order, date: Date) => {
+    if (order.type === 'Subscription') {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      return order.dailyStatuses?.[dateKey] || 'Pending';
+    }
+    return order.status;
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Delivered':
+        return <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">{status}</Badge>;
+      case 'Out for Delivery':
+        return <Badge className="bg-amber-500 text-white hover:bg-amber-600 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">{status}</Badge>;
+      case 'Picked Up':
+        return <Badge className="bg-orange-500 text-white hover:bg-orange-600 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">{status}</Badge>;
+      case 'Assigned':
+        return <Badge className="bg-blue-500 text-white hover:bg-blue-600 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">Assigned</Badge>;
+      case 'Cancelled':
+        return <Badge className="bg-red-500 text-white hover:bg-red-600 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">{status}</Badge>;
+      default:
+        return <Badge className="bg-slate-400 text-white hover:bg-slate-500 border-none font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">{status}</Badge>;
+    }
+  };
+
   const orderedPackageIds = useMemo(() => {
     if (!currentUser || !allOrders || !allPackages) return [];
     const myOrders = allOrders.filter(o => o.customerId === currentUser.id);
@@ -265,48 +406,150 @@ export default function CustomerHome() {
           </div>
         </header>
 
-        {upcomingOrder && (
-          <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Card className="rounded-[2.5rem] border-none shadow-md overflow-hidden bg-white ring-2 ring-primary/10 max-w-2xl">
-              <CardContent className="p-0">
-                <div className="bg-primary/5 px-6 py-3 border-b border-primary/10 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Upcoming Delivery</span>
-                  </div>
-                  <Badge variant="outline" className="bg-white text-[9px] font-bold border-primary/20 text-primary uppercase">
-                    {upcomingOrder.status}
-                  </Badge>
+        <div id="deliveries-by-date" className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <Card className="rounded-[2.5rem] border-none shadow-md overflow-hidden bg-white ring-2 ring-primary/5">
+            <CardContent className="p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                <div>
+                  <h2 className="text-2xl font-headline font-bold text-accent flex items-center gap-2">
+                    <Truck className="w-6 h-6 text-primary" />
+                    Scheduled Deliveries
+                  </h2>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Check your meals and real-time status for any specific date.
+                  </p>
                 </div>
-                <div className="p-6 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center shrink-0">
-                      <PackageIcon className="w-7 h-7 text-primary/40" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg text-accent leading-tight">{upcomingOrder.packageName || "Custom Meal"}</h3>
-                      <div className="flex items-center gap-3 mt-1.5">
-                        <div className="flex items-center gap-1 text-muted-foreground">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span className="text-xs font-bold">{upcomingOrder.slot} • {upcomingOrder.deliveryTime}</span>
+
+                {/* Date Picker */}
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Select Delivery Date</Label>
+                  <Popover open={isDeliveryDatePickerOpen} onOpenChange={setIsDeliveryDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="delivery-date-picker-btn"
+                        variant={"outline"}
+                        className="w-full md:w-[240px] h-12 justify-start text-left font-bold rounded-2xl bg-slate-50 border-slate-100 hover:bg-slate-100 px-4"
+                      >
+                        <CalendarIcon className="mr-2 h-4.5 w-4.5 text-primary" />
+                        {deliveryDate ? format(deliveryDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={deliveryDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setDeliveryDate(date);
+                            setIsDeliveryDatePickerOpen(false);
+                          }
+                        }}
+                        initialFocus
+                        className="rounded-3xl"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* Deliveries List */}
+              {deliveriesForSelectedDate.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {deliveriesForSelectedDate.map((order) => {
+                    const status = getDeliveryStatus(order, deliveryDate);
+                    const items = getDeliveryItems(order, deliveryDate);
+                    
+                    return (
+                      <div 
+                        key={order.id} 
+                        className="p-6 rounded-3xl bg-secondary/10 border border-secondary/20 flex flex-col justify-between gap-4 hover:border-primary/20 transition-all"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-wider bg-white border border-primary/10 px-2.5 py-0.5 rounded-full">
+                              #{order.id.slice(0, 8)}
+                            </span>
+                            {getStatusBadge(status)}
+                          </div>
+
+                          <h3 className="font-bold text-lg text-accent leading-tight flex items-center gap-1.5">
+                            <PackageIcon className="w-5 h-5 text-primary/70 shrink-0" />
+                            {order.packageName || "Custom Meal"}
+                            {order.packageQuantity > 1 && (
+                              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-lg font-black ml-1">
+                                {order.packageQuantity}x
+                              </span>
+                            )}
+                          </h3>
+
+                          <div className="flex items-center gap-2 text-muted-foreground mt-2 mb-4">
+                            <Clock className="w-4 h-4 text-primary/60 shrink-0" />
+                            <span className="text-xs font-bold">{order.slot} • {order.deliveryTime}</span>
+                          </div>
+
+                          {/* Items for this day */}
+                          <div className="bg-white/80 p-4 rounded-2xl border border-secondary/10 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground leading-none mb-1">
+                              Day Items
+                            </p>
+                            {items.length > 0 ? (
+                              <div className="space-y-2">
+                                {items.map((item, i) => (
+                                  <div key={i} className="flex items-center gap-2">
+                                    <div className={cn(
+                                      "w-1.5 h-1.5 rounded-full shrink-0",
+                                      item.type === 'Veg' ? "bg-emerald-500" : "bg-red-500"
+                                    )} />
+                                    <span className="text-xs font-bold text-slate-700">
+                                      {item.quantity}x {item.name}
+                                    </span>
+                                    <Badge variant="outline" className={cn(
+                                      "text-[8px] font-black uppercase px-1.5 h-4 flex items-center border-none rounded",
+                                      item.type === 'Veg' ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                                    )}>
+                                      {item.type}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs font-medium text-muted-foreground italic">
+                                No items listed for this delivery day.
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                          <span className="text-[10px] font-black text-blue-600 uppercase">Live Tracking</span>
+
+                        <div className="border-t border-secondary/10 pt-4 flex items-center justify-between">
+                          <span className="text-xs font-bold text-muted-foreground">
+                            {order.type === 'Subscription' ? 'Subscription Plan' : 'Daily Order'}
+                          </span>
+                          <Link href="/customer/orders">
+                            <Button variant="link" size="sm" className="text-xs font-black text-primary p-0 h-auto flex items-center gap-1">
+                              View Details <ChevronRight className="w-3.5 h-3.5" />
+                            </Button>
+                          </Link>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  <Link href="/customer/orders">
-                    <Button variant="ghost" size="icon" className="rounded-full hover:bg-secondary h-10 w-10">
-                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                    </Button>
-                  </Link>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              ) : (
+                <div className="p-10 border-2 border-dashed border-secondary/30 rounded-[2rem] bg-slate-50/50 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                    <Truck className="w-6 h-6 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-slate-800 font-bold">No Deliveries Scheduled</p>
+                    <p className="text-muted-foreground text-xs mt-1">
+                      No orders or active subscription packages found for {format(deliveryDate, 'MMMM d, yyyy')}.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         <section className="space-y-12">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
