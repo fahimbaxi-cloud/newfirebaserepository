@@ -786,7 +786,7 @@ export default function AdminDashboard() {
       {selectedOrder && (
         <>
           <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-            <DialogContent className="rounded-[2.5rem] max-w-2xl">
+            <DialogContent className="rounded-[2.5rem] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-headline">Order Details</DialogTitle>
                 <DialogDescription>Reviewing full information for Order #{selectedOrder.id}</DialogDescription>
