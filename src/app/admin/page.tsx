@@ -827,12 +827,43 @@ export default function AdminDashboard() {
               </div>
               <div className="bg-secondary/10 p-6 rounded-[2rem] space-y-3">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Order Content</p>
-                {(selectedOrder.items || []).map((item, i) => (
-                  <div key={i} className="flex justify-between items-center text-sm font-bold bg-white p-3 rounded-xl shadow-sm">
-                    <span>{item.quantity}x {item.name}</span>
-                    <Badge variant="outline" className="text-[9px] h-4">{item.type}</Badge>
-                  </div>
-                ))}
+                <ScrollArea className="h-[300px] pr-4">
+                  {selectedOrder.type === 'Subscription' ? (
+                    <div className="text-sm font-bold bg-white p-4 rounded-xl shadow-sm border border-secondary/20">
+                      <p className="text-accent mb-2">Subscription Details</p>
+                      <p className="text-xs text-muted-foreground">This is a subscription order for package: <span className="font-bold text-primary">{selectedOrder.packageName}</span></p>
+                      <div className="mt-4 space-y-2">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground">Assigned Items by Date:</p>
+                        {(() => {
+                          const pkg = allPackages.find(p => p.name === selectedOrder.packageName);
+                          const itemMap = new Map((selectedOrder.items || []).map(i => [i.menuItemId, i]));
+                          
+                          return Object.entries(pkg?.schemeAssignments || {}).map(([date, itemIds]) => (
+                            <div key={date} className="bg-secondary/10 p-3 rounded-lg">
+                              <p className="text-xs font-bold text-primary mb-1">{date}</p>
+                              {itemIds.map(itemId => {
+                                const item = itemMap.get(itemId);
+                                return item ? (
+                                  <div key={itemId} className="flex justify-between items-center text-xs ml-2">
+                                    <span>{item.name}</span>
+                                    <Badge variant="outline" className="text-[9px] h-4">{item.type}</Badge>
+                                  </div>
+                                ) : null;
+                              })}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  ) : (
+                    (selectedOrder.items || []).map((item, i) => (
+                      <div key={i} className="flex justify-between items-center text-sm font-bold bg-white p-3 rounded-xl shadow-sm mb-2">
+                        <span>{item.quantity}x {item.name}</span>
+                        <Badge variant="outline" className="text-[9px] h-4">{item.type}</Badge>
+                      </div>
+                    ))
+                  )}
+                </ScrollArea>
               </div>
               <DialogFooter>
                 <Button onClick={() => setIsDetailsOpen(false)} className="rounded-xl h-12 px-8 font-bold">Close Details</Button>
