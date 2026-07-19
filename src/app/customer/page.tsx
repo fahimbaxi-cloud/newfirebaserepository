@@ -111,6 +111,18 @@ export default function CustomerHome() {
   const confirmOrder = () => {
     if (!selectedPackage || !currentUser) return;
 
+    if (selectedPackage.type === 'scheme' && selectedPackage.disallowedDate) {
+      if (new Date() > new Date(selectedPackage.disallowedDate)) {
+        toast({
+          title: "Ordering Closed",
+          description: "This scheme is no longer available for orders.",
+          variant: "destructive"
+        });
+        setIsOrderDialogOpen(false);
+        return;
+      }
+    }
+    
     const finalTime = `${timeValue} ${timePeriod}`;
     const ordersRef = collection(firestore, 'orders');
     

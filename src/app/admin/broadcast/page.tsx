@@ -191,8 +191,10 @@ export default function BroadcastPage() {
   // Scheme State
   const [schemeStartDate, setSchemeStartDate] = useState<Date | undefined>(undefined);
   const [schemeEndDate, setSchemeEndDate] = useState<Date | undefined>(undefined);
+  const [schemeDisallowedDate, setSchemeDisallowedDate] = useState<Date | undefined>(undefined);
   const [isStartPopoverOpen, setIsStartPopoverOpen] = useState(false);
   const [isEndPopoverOpen, setIsEndPopoverOpen] = useState(false);
+  const [isDisallowedPopoverOpen, setIsDisallowedPopoverOpen] = useState(false);
   const [schemeAssignments, setSchemeAssignments] = useState<Record<string, string[]>>({});
 
   const daysInRange = useMemo(() => {
@@ -295,6 +297,7 @@ export default function BroadcastPage() {
       newPackageData.schemeAssignments = schemeAssignments;
       newPackageData.startDate = schemeStartDate?.toISOString();
       newPackageData.endDate = schemeEndDate?.toISOString();
+      newPackageData.disallowedDate = schemeDisallowedDate?.toISOString();
     }
 
     if (editingPackageId) {
@@ -344,8 +347,11 @@ export default function BroadcastPage() {
       }
       if (pkg.endDate) {
         const d = typeof pkg.endDate === 'string' ? new Date(pkg.endDate) : (pkg.endDate.toDate ? pkg.endDate.toDate() : new Date(pkg.endDate));
-        console.log('Setting schemeEndDate:', d);
         setSchemeEndDate(d);
+      }
+      if (pkg.disallowedDate) {
+        const d = typeof pkg.disallowedDate === 'string' ? new Date(pkg.disallowedDate) : (pkg.disallowedDate.toDate ? pkg.disallowedDate.toDate() : new Date(pkg.disallowedDate));
+        setSchemeDisallowedDate(d);
       }
     }
     
@@ -370,6 +376,7 @@ export default function BroadcastPage() {
     setSelectedDate(new Date());
     setSchemeStartDate(new Date());
     setSchemeEndDate(new Date());
+    setSchemeDisallowedDate(undefined);
   };
 
   return (
@@ -847,6 +854,21 @@ export default function BroadcastPage() {
                             </PopoverContent>
                           </Popover>
                         </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Disallowed Date (Optional)</Label>
+                        <Popover open={isDisallowedPopoverOpen} onOpenChange={setIsDisallowedPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full h-14 justify-start text-left font-bold rounded-2xl bg-secondary/30 border-none px-6">
+                              <CalendarIcon className="mr-3 h-5 w-5 text-primary" />
+                              {schemeDisallowedDate ? format(schemeDisallowedDate, "PPP") : <span>Pick date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                            <Calendar mode="single" selected={schemeDisallowedDate} onSelect={(date) => { setSchemeDisallowedDate(date); setIsDisallowedPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       <div className="space-y-4">
