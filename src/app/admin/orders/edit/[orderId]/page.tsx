@@ -70,10 +70,77 @@ export default function EditOrderPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>('Pending');
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Daily Package Custom Logistics Configurations
+  const [dailyConfigs, setDailyConfigs] = useState<Record<string, {
+    referenceDate: Date;
+    slot: TimeSlot;
+    timeValue: string;
+    timePeriod: string;
+  }>>({});
+  const [openPopovers, setOpenPopovers] = useState<Record<string, boolean>>({});
+
+  const getDailyConfig = (pkgId: string) => {
+    const existing = dailyConfigs[pkgId];
+    if (existing) return existing;
+    return {
+      referenceDate: new Date(),
+      slot: 'Morning' as TimeSlot,
+      timeValue: '08:30',
+      timePeriod: 'AM'
+    };
+  };
+
+  const updateDailyConfig = (pkgId: string, updates: Partial<{
+    referenceDate: Date;
+    slot: TimeSlot;
+    timeValue: string;
+    timePeriod: string;
+  }>) => {
+    setDailyConfigs(prev => {
+      const current = prev[pkgId] || {
+        referenceDate: new Date(),
+        slot: 'Morning' as TimeSlot,
+        timeValue: '08:30',
+        timePeriod: 'AM'
+      };
+      let updated = { ...current, ...updates };
+      if (updates.slot) {
+        updated.timePeriod = updates.slot === 'Morning' ? 'AM' : 'PM';
+        if (updates.slot === 'Morning' && updated.timeValue === '12:30') {
+          updated.timeValue = '08:30';
+        } else if (updates.slot === 'Noon' && updated.timeValue === '08:30') {
+          updated.timeValue = '12:30';
+        }
+      }
+      return {
+        ...prev,
+        [pkgId]: updated
+      };
+    });
+  };
+
   // Scheme Date States
-  const [activeTab, setActiveTab] = useState('daily');
-  const [refMonth, setRefMonth] = useState<string>(format(new Date(), "MMMM"));
-  const [refYear, setRefYear] = useState<string>(format(new Date(), "yyyy"));
+  const [activeTab, setActiveTab] = useState('all');
+  const [schemeStartDate, setSchemeStartDate] = useState<Date | undefined>(undefined);
+  const [schemeEndDate, setSchemeEndDate] = useState<Date | undefined>(undefined);
+  const [isStartPopoverOpen, setIsStartPopoverOpen] = useState(false);
+  const [isEndPopoverOpen, setIsEndPopoverOpen] = useState(false);
+  const [isAllStartPopoverOpen, setIsAllStartPopoverOpen] = useState(false);
+  const [isAllEndPopoverOpen, setIsAllEndPopoverOpen] = useState(false);
+  const [isDailyStartPopoverOpen, setIsDailyStartPopoverOpen] = useState(false);
+  const [isDailyEndPopoverOpen, setIsDailyEndPopoverOpen] = useState(false);
+
+  // New Search and Date Range Filters
+  const [packageSearch, setPackageSearch] = useState('');
+  const [allStartDate, setAllStartDate] = useState<Date | undefined>(undefined);
+  const [allEndDate, setAllEndDate] = useState<Date | undefined>(undefined);
+  const [dailyRangeStartDate, setDailyRangeStartDate] = useState<Date | undefined>(undefined);
+  const [dailyRangeEndDate, setDailyRangeEndDate] = useState<Date | undefined>(undefined);
+  const [isSchemeStartPopoverOpen, setIsSchemeStartPopoverOpen] = useState(false);
+  const [isSchemeEndPopoverOpen, setIsSchemeEndPopoverOpen] = useState(false);
+  const [schemeDisallowedDate, setSchemeDisallowedDate] = useState<Date | undefined>(undefined);
+  const [isDisallowedPopoverOpen, setIsDisallowedPopoverOpen] = useState(false);
+  const [schemeAssignments, setSchemeAssignments] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (order && allUsers.length > 0 && broadcastPackages.length > 0 && !isInitialized) {
@@ -86,6 +153,17 @@ export default function EditOrderPage() {
       const pkg = broadcastPackages.find(p => p.name === order.packageName);
       if (pkg) {
         setSelectedPackages({ [pkg.id]: order.packageQuantity });
+        
+        // Initialize dailyConfigs from order if applicable
+        if (pkg.type === 'daily') {
+          const timeParts = (order.deliveryTime || '08:30 AM').split(' ');
+          updateDailyConfig(pkg.id, {
+            referenceDate: isValid(date) ? date : new Date(),
+            slot: order.slot as TimeSlot,
+            timeValue: timeParts[0] || '08:30',
+            timePeriod: timeParts[1] || 'AM'
+          });
+        }
       }
 
       setDeliveryAddress(order.address);
@@ -98,13 +176,8 @@ export default function EditOrderPage() {
       
       if (order.type === 'Subscription') {
         setActiveTab('scheme');
-        const d = isValid(date) ? date : new Date();
-        setRefMonth(format(d, "MMMM"));
-        setRefYear(format(d, "yyyy"));
       } else {
         setActiveTab('daily');
-        const d = isValid(date) ? date : new Date();
-        setSelectedDate(d);
       }
 
       setIsInitialized(true);
@@ -158,7 +231,18 @@ export default function EditOrderPage() {
 
   const sortedSchemePackages = useMemo(() => {
     if (!broadcastPackages) return [];
-    const list = [...broadcastPackages].filter(pkg => pkg.type === 'monthly');
+    let list = [...broadcastPackages].filter(pkg => pkg.type === 'scheme');
+    
+    // Filter by date range: Show all if either date is missing, otherwise filter by overlap
+    if (schemeStartDate && schemeEndDate) {
+      list = list.filter(pkg => {
+        if (!pkg.startDate || !pkg.endDate) return false;
+        const pStart = new Date(pkg.startDate);
+        const pEnd = new Date(pkg.endDate);
+        // Overlap logic
+        return pStart <= schemeEndDate && pEnd >= schemeStartDate;
+      });
+    }
     
     // Ensure the package currently in the order is always visible
     if (order && order.type === 'Subscription') {
@@ -169,16 +253,13 @@ export default function EditOrderPage() {
     }
     
     return list.sort((a, b) => getPackageDate(b).getTime() - getPackageDate(a).getTime());
-  }, [broadcastPackages, order]);
+  }, [broadcastPackages, order, schemeStartDate, schemeEndDate]);
 
   const targetDailyDateStr = useMemo(() => {
     if (!selectedDate) return '';
     return format(addDays(selectedDate, 1), "MMMM d, yyyy");
   }, [selectedDate]);
 
-  const targetMonthStr = useMemo(() => {
-    return `${refMonth} ${refYear}`;
-  }, [refMonth, refYear]);
 
   const cartPackages = useMemo(() => {
     return Object.entries(selectedPackages)
@@ -203,9 +284,7 @@ export default function EditOrderPage() {
     setSelectedPackages(prev => {
       const current = prev[pkgId] || 0;
       const next = Math.max(0, current + delta);
-      const newState: Record<string, number> = {};
-      if (next > 0) newState[pkgId] = next;
-      return newState;
+      return { ...prev, [pkgId]: next };
     });
   };
 
@@ -216,6 +295,9 @@ export default function EditOrderPage() {
       return;
     }
 
+    // Since we are editing a single existing order document, we will update it based on the first item in the cart for now, 
+    // to maintain the single-document structure of the existing order.
+    // If the cart has multiple items, this logic might need to be reconsidered in the future.
     const { pkg, qty } = cartPackages[0];
     const orderItems = (pkg!.items || []).map(itemId => {
       const m = menuItems.find(mi => mi.id === itemId);
@@ -229,18 +311,21 @@ export default function EditOrderPage() {
     });
 
     // Calculate referenceDate and targetDeliveryDate depending on daily vs subscription (scheme)
-    const calculatedRefDate = pkg!.type === 'daily'
-      ? (selectedDate || new Date()).toISOString()
-      : (() => {
-          const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-          const mIdx = months.indexOf(refMonth);
-          const d = new Date(parseInt(refYear), mIdx >= 0 ? mIdx : 0, 1, 12, 0, 0);
-          return d.toISOString();
-        })();
+    let calculatedRefDate = '';
+    let calculatedTargetDeliveryDate = '';
+    let calculatedSlot = timeSlot;
+    let calculatedDeliveryTime = `${timeValue} ${timePeriod}`;
 
-    const calculatedTargetDeliveryDate = pkg!.type === 'daily'
-      ? targetDailyDateStr
-      : `${refMonth} ${refYear}`;
+    if (pkg!.type === 'daily') {
+      const config = getDailyConfig(pkg!.id);
+      calculatedRefDate = config.referenceDate.toISOString();
+      calculatedTargetDeliveryDate = format(addDays(config.referenceDate, 1), "MMMM d, yyyy");
+      calculatedSlot = config.slot;
+      calculatedDeliveryTime = `${config.timeValue} ${config.timePeriod}`;
+    } else {
+      calculatedRefDate = pkg!.startDate || new Date().toISOString();
+      calculatedTargetDeliveryDate = `${pkg!.startDate} to ${pkg!.endDate}`;
+    }
 
     const updateData: any = {
       customerId: selectedUser.id,
@@ -252,8 +337,8 @@ export default function EditOrderPage() {
       items: orderItems,
       total: pkg!.price * qty,
       type: pkg!.type === 'daily' ? 'Daily' : 'Subscription',
-      slot: timeSlot,
-      deliveryTime: `${timeValue} ${timePeriod}`,
+      slot: calculatedSlot,
+      deliveryTime: calculatedDeliveryTime,
       status: orderStatus,
       referenceDate: calculatedRefDate,
       targetDeliveryDate: calculatedTargetDeliveryDate,
@@ -466,38 +551,48 @@ export default function EditOrderPage() {
                       </TabsContent>
 
                       <TabsContent value="scheme" className="space-y-4 outline-none animate-in fade-in duration-300">
-                        {/* Month and Year Selection for Schemes */}
-                        <div className="bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20">
-                          <div className="space-y-2 max-w-md">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Reference Month & Year</Label>
-                            <div className="flex gap-2">
-                              <Select value={refMonth} onValueChange={setRefMonth}>
-                                <SelectTrigger className="rounded-xl border-secondary font-bold h-11 bg-white shadow-sm">
-                                  <SelectValue placeholder="Month" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                  {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((m) => (
-                                    <SelectItem key={m} value={m}>{m}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Select value={refYear} onValueChange={setRefYear}>
-                                <SelectTrigger className="rounded-xl border-secondary font-bold h-11 bg-white shadow-sm w-28">
-                                  <SelectValue placeholder="Year" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                  {["2025", "2026", "2027", "2028", "2029", "2030"].map((y) => (
-                                    <SelectItem key={y} value={y}>{y}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+{/* Date Range Selection for Schemes */}
+                        <div className="bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20 mb-6">
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Select Scheme Date Range</Label>
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                              <Popover open={isSchemeStartPopoverOpen} onOpenChange={setIsSchemeStartPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                    {schemeStartDate ? format(schemeStartDate, "PPP") : <span>Start Date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                  <Calendar mode="single" selected={schemeStartDate} onSelect={(date) => { setSchemeStartDate(date); setIsSchemeStartPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                </PopoverContent>
+                              </Popover>
+                              <Popover open={isSchemeEndPopoverOpen} onOpenChange={setIsSchemeEndPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                    {schemeEndDate ? format(schemeEndDate, "PPP") : <span>End Date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                  <Calendar mode="single" selected={schemeEndDate} onSelect={(date) => { setSchemeEndDate(date); setIsSchemeEndPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                </PopoverContent>
+                              </Popover>
+                              {(schemeStartDate || schemeEndDate) && (
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={() => { setSchemeStartDate(undefined); setSchemeEndDate(undefined); }}
+                                  className="text-xs font-bold text-destructive hover:text-destructive/80"
+                                >
+                                  Clear Filter
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
                         {sortedSchemePackages.length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {sortedSchemePackages.map((pkg) => {
-                              const isTargetMatch = pkg.dateContext === targetMonthStr;
                               return (
                                 <div 
                                   key={pkg.id} 
@@ -505,16 +600,9 @@ export default function EditOrderPage() {
                                     "p-5 border-2 rounded-[2rem] transition-all flex flex-col justify-between h-full group relative overflow-hidden",
                                     selectedPackages[pkg.id] > 0 
                                       ? "border-primary bg-primary/5 shadow-md" 
-                                      : isTargetMatch 
-                                        ? "border-green-300 bg-green-50/40 hover:border-green-400" 
-                                        : "border-secondary/30 bg-white hover:border-primary/20"
+                                      : "border-secondary/30 bg-white hover:border-primary/20"
                                   )}
                                 >
-                                  {isTargetMatch && (
-                                    <div className="absolute top-0 right-0 bg-green-500 text-white font-black text-[8px] px-3 py-1 rounded-bl-xl uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                                      <Check className="w-2.5 h-2.5" /> Month Match
-                                    </div>
-                                  )}
                                   <div className="space-y-2">
                                     <div className="flex justify-between items-start">
                                       <span className="text-[10px] font-bold text-muted-foreground bg-secondary/40 px-2 py-0.5 rounded">
@@ -578,16 +666,79 @@ export default function EditOrderPage() {
             </CardHeader>
             <CardContent className="p-7 space-y-6">
               <div className="space-y-4">
-                <div className="bg-secondary/10 p-4 rounded-xl space-y-2">
-                  {cartPackages.map(({ pkg, qty }) => (
-                    <div key={pkg!.id} className="flex justify-between font-bold text-sm">
-                      <span>{qty}x {pkg!.name}</span>
-                      <span className="text-primary">{pkg!.price * qty}</span>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Selected Items</Label>
+                    <div className="space-y-3 min-h-[100px]">
+                      {cartPackages.length > 0 ? cartPackages.map(({ pkg, qty }) => {
+                        const isDaily = pkg!.type === 'daily';
+                        return (
+                          <div key={pkg!.id} className="flex flex-col gap-3 bg-secondary/10 p-3 rounded-xl border border-secondary/20 animate-in slide-in-from-right-2">
+                            <div className="flex justify-between items-start text-sm">
+                              <div>
+                                <p className="font-bold text-accent">{qty}x {pkg!.name}</p>
+                                <p className="text-[10px] text-muted-foreground line-clamp-1 italic font-medium">{pkg!.dateContext}</p>
+                              </div>
+                              <span className="font-black text-primary">Rs {pkg!.price * qty}</span>
+                            </div>
+
+                            {isDaily && (
+                              <div className="pt-2.5 border-t border-secondary/20 space-y-2.5">
+                                {/* Reference Date Picker */}
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black uppercase text-muted-foreground block">Reference Date (When Given)</label>
+                                  <Popover 
+                                    open={!!openPopovers[`ref-${pkg!.id}`]} 
+                                    onOpenChange={(open) => setOpenPopovers(prev => ({ ...prev, [`ref-${pkg!.id}`]: open }))}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" className="w-full h-9 justify-start text-left font-bold rounded-xl bg-white border-secondary/30 px-3 shadow-sm text-xs">
+                                        <CalendarIcon className="mr-2 h-3.5 w-3.5 text-primary" />
+                                        {getDailyConfig(pkg!.id).referenceDate ? format(getDailyConfig(pkg!.id).referenceDate, "PPP") : <span>Pick a date</span>}
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                      <Calendar mode="single" selected={getDailyConfig(pkg!.id).referenceDate} onSelect={(date) => { if(date) updateDailyConfig(pkg!.id, { referenceDate: date }); setOpenPopovers(prev => ({ ...prev, [`ref-${pkg!.id}`]: false })); }} initialFocus className="rounded-3xl" />
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                {/* Slot and Time */}
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase text-muted-foreground block">Slot</label>
+                                    <Select value={getDailyConfig(pkg!.id).slot} onValueChange={(v) => updateDailyConfig(pkg!.id, { slot: v as TimeSlot })}>
+                                      <SelectTrigger className="h-9 rounded-xl bg-white border-secondary/30 font-bold text-xs"><SelectValue /></SelectTrigger>
+                                      <SelectContent><SelectItem value="Morning">Morning</SelectItem><SelectItem value="Noon">Noon</SelectItem></SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[9px] font-black uppercase text-muted-foreground block">Time</label>
+                                    <div className="flex gap-1">
+                                      <Select value={getDailyConfig(pkg!.id).timeValue} onValueChange={(v) => updateDailyConfig(pkg!.id, { timeValue: v })}>
+                                        <SelectTrigger className="h-9 rounded-xl bg-white border-secondary/30 font-bold text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          {getDailyConfig(pkg!.id).slot === 'Morning' ? 
+                                            ["08:30", "09:00", "09:30", "10:00"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>) : 
+                                            ["12:30", "01:00", "01:30", "02:00"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)
+                                          }
+                                        </SelectContent>
+                                      </Select>
+                                      <Input value={getDailyConfig(pkg!.id).timePeriod} readOnly className="w-12 h-9 rounded-xl bg-secondary/20 border-none font-black text-center text-xs" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }) : (
+                        <div className="text-center p-4 text-xs font-bold text-muted-foreground bg-secondary/10 rounded-xl">No items selected</div>
+                      )}
                     </div>
-                  ))}
+                  </div>
                   <div className="pt-2 border-t flex justify-between font-black text-lg">
                     <span>Total</span>
-                    <span>Rs {totalAmount}</span>
+                    <span className="text-primary">Rs {totalAmount}</span>
                   </div>
                 </div>
 
