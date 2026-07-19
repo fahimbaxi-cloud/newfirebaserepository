@@ -62,9 +62,9 @@ export default function EditSchemeDayDialog({ order, isOpen, onClose, allPackage
         <DialogHeader>
           <DialogTitle>Edit Scheme Day</DialogTitle>
           <DialogDescription className="space-y-1">
-            <p>Customer: <span className="font-bold text-foreground">{order?.customerName}</span></p>
-            <p>Scheme: <span className="font-bold text-foreground">{pkg?.name}</span></p>
-            <p>Date Range: <span className="font-bold text-foreground">{pkg?.startDate} to {pkg?.endDate}</span></p>
+            <span>Customer: <span className="font-bold text-foreground">{order?.customerName}</span></span><br />
+            <span>Scheme: <span className="font-bold text-foreground">{pkg?.name}</span></span><br />
+            <span>Date Range: <span className="font-bold text-foreground">{pkg?.startDate} to {pkg?.endDate}</span></span>
           </DialogDescription>
         </DialogHeader>
         
@@ -76,24 +76,33 @@ export default function EditSchemeDayDialog({ order, isOpen, onClose, allPackage
             
             {selectedDate && (
                 <ScrollArea className="h-[400px]">
-                    {allMenuItems.map(menuItem => {
+                    {allMenuItems
+                        .filter(menuItem => (pkg?.schemeAssignments?.[selectedDate] || []).includes(menuItem.id))
+                        .map(menuItem => {
                         // Determine if this item is selected for the selected date
                         const dayItemIds = overrides[selectedDate] || pkg?.schemeAssignments?.[selectedDate] || [];
                         const isSelected = dayItemIds.includes(menuItem.id);
                         
                         return (
-                            <div key={menuItem.id} className={`p-4 border rounded-xl mb-4 ${isSelected ? 'border-emerald-500 bg-emerald-50' : ''}`}>
+                            <div key={menuItem.id} className={`p-4 border rounded-xl mb-4 ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'}`}>
                                 <div className="flex justify-between items-center mb-2">
                                     <div className="font-bold">{menuItem.name}</div>
                                     <Badge variant={isSelected ? "default" : "outline"}>{menuItem.type}</Badge>
                                 </div>
+                                <p className="text-xs text-muted-foreground mb-2 italic">"{menuItem.description}"</p>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm">Rs {menuItem.price}</span>
-                                    <div className="flex items-center gap-2">
-                                        <Button size="icon" variant="outline" onClick={() => handleMealToggle(menuItem.id, selectedDate)}>
-                                            {isSelected ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                        </Button>
-                                        <span className="font-bold">{isSelected ? 1 : 0}</span>
+                                    <span className="text-sm font-bold text-orange-600">Rs {menuItem.price}</span>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-sm font-semibold text-muted-foreground">Quantity</span>
+                                        <div className="flex items-center gap-2">
+                                            <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleMealToggle(menuItem.id, selectedDate)}>
+                                                {isSelected ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                            </Button>
+                                            <span className="font-bold text-lg w-6 text-center">{isSelected ? 1 : 0}</span>
+                                            <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => handleMealToggle(menuItem.id, selectedDate)}>
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
