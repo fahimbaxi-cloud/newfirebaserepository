@@ -37,7 +37,7 @@ export default function EditSchemeDayDialog({ order, isOpen, onClose, allPackage
   }, [order]);
 
   const handleMealToggle = (menuItemId: string, date: string) => {
-      const currentOverrides = overrides[date] || pkg?.schemeAssignments?.[date] || [];
+      const currentOverrides = overrides[date] || [];
       const newOverrides = currentOverrides.includes(menuItemId) 
         ? currentOverrides.filter(id => id !== menuItemId)
         : [...currentOverrides, menuItemId];
