@@ -56,6 +56,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import EditSchemeDayDialog from '@/components/EditSchemeDayDialog';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
@@ -96,12 +97,14 @@ export default function AdminDashboard() {
   const purchasesQuery = useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]);
   const paymentsQuery = useMemoFirebase(() => collection(firestore, 'payments'), [firestore]);
   const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
+  const menuItemsQuery = useMemoFirebase(() => collection(firestore, 'menu'), [firestore]);
 
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
   const { data: users = [], isLoading: usersLoading } = useCollection<User>(usersQuery);
   const { data: purchases = [] } = useCollection<any>(purchasesQuery);
   const { data: payments = [] } = useCollection<any>(paymentsQuery);
   const { data: allPackages = [] } = useCollection<any>(packagesQuery);
+  const { data: allMenuItems = [] } = useCollection<MenuItem>(menuItemsQuery);
 
   const [activeFilters, setActiveFilters] = useState({
     morning: false,
@@ -128,6 +131,7 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isEditSchemeDayOpen, setIsEditSchemeDayOpen] = useState(false);
   
   useEffect(() => {
     setMounted(true);
@@ -676,6 +680,24 @@ export default function AdminDashboard() {
                               </TooltipTrigger>
                               <TooltipContent><p>Assign Rider</p></TooltipContent>
                             </Tooltip>
+                            {order.type === 'Subscription' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
+                                    onClick={() => {
+                                      setSelectedOrder(order);
+                                      setIsEditSchemeDayOpen(true);
+                                    }}
+                                  >
+                                    <CalendarDays className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Edit Scheme Day</p></TooltipContent>
+                              </Tooltip>
+                            )}
                           </TooltipProvider>
                         </div>
                         <div className="hidden print:block text-[10px] font-bold uppercase">{order.status}</div>
@@ -785,6 +807,13 @@ export default function AdminDashboard() {
 
       {selectedOrder && (
         <>
+          <EditSchemeDayDialog 
+            order={selectedOrder}
+            isOpen={isEditSchemeDayOpen}
+            onClose={() => setIsEditSchemeDayOpen(false)}
+            allPackages={allPackages}
+            allMenuItems={allMenuItems}
+          />
           <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
             <DialogContent className="rounded-[2.5rem] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
