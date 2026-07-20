@@ -4,7 +4,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Order, OrderStatus, User, TimeSlot } from '@/lib/types';
+import { Order, OrderStatus, User, TimeSlot, MenuItem, BroadcastPackage } from '@/lib/types';
+import { MealChangeDialog } from '@/components/MealChangeDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,8 +50,7 @@ import {
   Search,
   Printer,
   FileDown,
-  CalendarDays,
-  ChefHat
+  CalendarDays
 } from 'lucide-react';
 import { format, isSameDay, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -97,12 +97,14 @@ export default function AdminDashboard() {
   const purchasesQuery = useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]);
   const paymentsQuery = useMemoFirebase(() => collection(firestore, 'payments'), [firestore]);
   const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
+  const menuQuery = useMemoFirebase(() => collection(firestore, 'menu_items'), [firestore]);
 
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
   const { data: users = [], isLoading: usersLoading } = useCollection<User>(usersQuery);
   const { data: purchases = [] } = useCollection<any>(purchasesQuery);
   const { data: payments = [] } = useCollection<any>(paymentsQuery);
   const { data: allPackages = [] } = useCollection<any>(packagesQuery);
+  const { data: menuItems = [] } = useCollection<any>(menuQuery);
 
   const [activeFilters, setActiveFilters] = useState({
     morning: false,
@@ -127,10 +129,10 @@ export default function AdminDashboard() {
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedOrderForMealChange, setSelectedOrderForMealChange] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
   const [isMealChangeOpen, setIsMealChangeOpen] = useState(false);
-  const [orderToChangeMeal, setOrderToChangeMeal] = useState<Order | null>(null);
   
   useEffect(() => {
     setMounted(true);
@@ -665,31 +667,12 @@ export default function AdminDashboard() {
                               <TooltipContent><p>Full Edit Page</p></TooltipContent>
                             </Tooltip>
 
-                            {order.type === 'Subscription' && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
-                                    onClick={() => {
-                                      setOrderToChangeMeal(order);
-                                      setIsMealChangeOpen(true);
-                                    }}
-                                  >
-                                    <ChefHat className="h-4 w-4" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Change Meal</p></TooltipContent>
-                              </Tooltip>
-                            )}
-
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-green-600 hover:bg-green-50"
                                   onClick={() => handleStatusUpdate(order.id, 'Assigned')}
                                   disabled={order.status === 'Delivered' || order.status === 'Cancelled'}
                                 >
@@ -698,6 +681,22 @@ export default function AdminDashboard() {
                               </TooltipTrigger>
                               <TooltipContent><p>Assign Rider</p></TooltipContent>
                             </Tooltip>
+                            
+                            {order.type === 'Subscription' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-purple-600 hover:bg-purple-50"
+                                    onClick={() => { setSelectedOrderForMealChange(order); setIsMealChangeOpen(true); }}
+                                  >
+                                    <RefreshCcw className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Change Meal</p></TooltipContent>
+                              </Tooltip>
+                            )}
                           </TooltipProvider>
                         </div>
                         <div className="hidden print:block text-[10px] font-bold uppercase">{order.status}</div>
@@ -929,46 +928,16 @@ export default function AdminDashboard() {
           </Dialog>
         </>
       )}
-      
-      <Dialog open={isMealChangeOpen} onOpenChange={setIsMealChangeOpen}>
-        <DialogContent className="rounded-[2.5rem] max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-headline flex items-center gap-2">
-              <ChefHat className="w-6 h-6 text-orange-600" />
-              Change Meal
-            </DialogTitle>
-            <DialogDescription>Change meal for subscription order #{orderToChangeMeal?.id}</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Label>Select Date</Label>
-            {/* Simplified date selection - just showing dates from the package scheme for now */}
-            {orderToChangeMeal && (
-              <Select onValueChange={(date) => console.log(date)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a date" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.keys(allPackages.find(p => p.name === orderToChangeMeal.packageName)?.schemeAssignments || {}).map(date => (
-                    <SelectItem key={date} value={date}>{date}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            
-            <Label>Select New Meal</Label>
-            {/* Simplified meal selection - list of available meals */}
-            <div className="grid grid-cols-2 gap-2">
-              {/* Mock meals - normally would fetch available meals for the selected date/slot */}
-              <Button variant="outline">Meal Option 1</Button>
-              <Button variant="outline">Meal Option 2</Button>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsMealChangeOpen(false)} className="rounded-xl h-12 px-8 font-bold">Save Change</Button>
-            <Button onClick={() => setIsMealChangeOpen(false)} className="rounded-xl h-12 px-8 font-bold" variant="ghost">Cancel</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+      {selectedOrderForMealChange && (
+        <MealChangeDialog
+          open={isMealChangeOpen}
+          onOpenChange={setIsMealChangeOpen}
+          order={selectedOrderForMealChange}
+          menuItems={menuItems}
+          packages={allPackages as BroadcastPackage[]}
+        />
+      )}
     </div>
   );
 }
