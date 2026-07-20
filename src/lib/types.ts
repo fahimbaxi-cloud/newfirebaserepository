@@ -95,7 +95,6 @@ export interface Order {
   referenceDate?: string; // Date when the order was given (Booking Date)
   createdAt: Date;
   dailyStatuses?: Record<string, OrderStatus>;
-  dayOverrides?: Record<string, string[]>;
 }
 
 export interface User {
