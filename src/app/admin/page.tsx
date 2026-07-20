@@ -49,7 +49,8 @@ import {
   Search,
   Printer,
   FileDown,
-  CalendarDays
+  CalendarDays,
+  ChefHat
 } from 'lucide-react';
 import { format, isSameDay, parseISO, isValid } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -128,6 +129,8 @@ export default function AdminDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [isMealChangeOpen, setIsMealChangeOpen] = useState(false);
+  const [orderToChangeMeal, setOrderToChangeMeal] = useState<Order | null>(null);
   
   useEffect(() => {
     setMounted(true);
@@ -662,6 +665,25 @@ export default function AdminDashboard() {
                               <TooltipContent><p>Full Edit Page</p></TooltipContent>
                             </Tooltip>
 
+                            {order.type === 'Subscription' && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-orange-600 hover:bg-orange-50"
+                                    onClick={() => {
+                                      setOrderToChangeMeal(order);
+                                      setIsMealChangeOpen(true);
+                                    }}
+                                  >
+                                    <ChefHat className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Change Meal</p></TooltipContent>
+                              </Tooltip>
+                            )}
+
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button 
@@ -907,6 +929,46 @@ export default function AdminDashboard() {
           </Dialog>
         </>
       )}
+      
+      <Dialog open={isMealChangeOpen} onOpenChange={setIsMealChangeOpen}>
+        <DialogContent className="rounded-[2.5rem] max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-headline flex items-center gap-2">
+              <ChefHat className="w-6 h-6 text-orange-600" />
+              Change Meal
+            </DialogTitle>
+            <DialogDescription>Change meal for subscription order #{orderToChangeMeal?.id}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Label>Select Date</Label>
+            {/* Simplified date selection - just showing dates from the package scheme for now */}
+            {orderToChangeMeal && (
+              <Select onValueChange={(date) => console.log(date)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a date" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(allPackages.find(p => p.name === orderToChangeMeal.packageName)?.schemeAssignments || {}).map(date => (
+                    <SelectItem key={date} value={date}>{date}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            
+            <Label>Select New Meal</Label>
+            {/* Simplified meal selection - list of available meals */}
+            <div className="grid grid-cols-2 gap-2">
+              {/* Mock meals - normally would fetch available meals for the selected date/slot */}
+              <Button variant="outline">Meal Option 1</Button>
+              <Button variant="outline">Meal Option 2</Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsMealChangeOpen(false)} className="rounded-xl h-12 px-8 font-bold">Save Change</Button>
+            <Button onClick={() => setIsMealChangeOpen(false)} className="rounded-xl h-12 px-8 font-bold" variant="ghost">Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
