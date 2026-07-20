@@ -95,6 +95,13 @@ export interface Order {
   referenceDate?: string; // Date when the order was given (Booking Date)
   createdAt: Date;
   dailyStatuses?: Record<string, OrderStatus>;
+  dailyItemsOverride?: Record<string, {
+    menuItemId: string;
+    name: string;
+    quantity: number;
+    price: number;
+    type: VegNonVeg;
+  }[]>;
 }
 
 export interface User {

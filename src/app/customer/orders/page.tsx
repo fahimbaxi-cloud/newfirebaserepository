@@ -279,7 +279,11 @@ export default function CustomerOrdersPage() {
     setIsHelpDialogOpen(true);
   };
 
-  const getPackageItems = (order: Order) => {
+  const getPackageItems = (order: Order, targetDate: Date = new Date()) => {
+    const dateKey = format(targetDate, 'yyyy-MM-dd');
+    if (order.dailyItemsOverride && order.dailyItemsOverride[dateKey]) {
+      return order.dailyItemsOverride[dateKey];
+    }
     const pkg = allPackages.find(p => p.name === order.packageName);
     if (pkg && pkg.items) {
       return pkg.items.map(id => menu.find(m => m.id === id)).filter(Boolean).filter((m: any) => m.show !== false);
@@ -349,7 +353,14 @@ export default function CustomerOrdersPage() {
   };
 
   const BreakdownSection = ({ order }: { order: Order }) => {
-    const items = getPackageItems(order);
+    // For Subscription, breakdown is shown by day, so we need to know the date
+    // This is tricky as getPackageItems was called without arguments.
+    // I need to update all calls to BreakdownSection or make targetDate optional/derived.
+    // Looking at the context, BreakdownSection seems to be used for rendering *all* dates for subscriptions in a list.
+    // This component might need to be refactored to take a date, or getPackageItems needs to handle it differently.
+    // Actually, looking at the code, it uses openDays[dayKey] and gets assignments.
+    // I'll keep the signature for now, but update it inside the loops where it's called.
+    const items = getPackageItems(order); 
     const pkg = allPackages.find(p => p.name === order.packageName);
     return (
       <div className="bg-primary/5 p-5 rounded-[2rem] border border-primary/10 mt-2 mb-4">
@@ -379,11 +390,11 @@ export default function CustomerOrdersPage() {
                     return { items: [item], dateKey, label: formattedLabel, dayNumber: idx + 1 };
                   });
 
-              return itemsToRender.filter(x => x.items.length > 0).map(({ items, dateKey, label, dayNumber }, idx) => {
+              return itemsToRender.filter(x => x.items.length > 0).map(({ items: baseItems, dateKey, label, dayNumber }, idx) => {
                 const dayKey = `${order.id}-day-${idx}`;
                 const isOpen = !!openDays[dayKey];
                 const dayStatus = getDailyStatus(order, dateKey);
-
+                const items = getPackageItems(order, dateKey ? parseISO(dateKey) : new Date());
                 return (
                   <Collapsible key={dayKey} open={isOpen} onOpenChange={() => toggleDay(dayKey)} className="w-full">
                     <div className={cn("flex items-center justify-between p-2.5 rounded-2xl border transition-all", isOpen ? "bg-white border-primary/30 shadow-sm" : "bg-secondary/20 border-secondary/30")}>

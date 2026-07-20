@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Order, MenuItem, BroadcastPackage } from '@/lib/types';
-import { useFirestore, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { Order, MenuItem, BroadcastPackage, RawItem } from '@/lib/types';
+import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -23,61 +23,58 @@ interface MealChangeDialogProps {
 
 export function MealChangeDialog({ open, onOpenChange, order, menuItems, packages }: MealChangeDialogProps) {
   const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedMealId, setSelectedMealId] = useState<string>('');
+  const [selectedPackageId, setSelectedPackageId] = useState<string>('');
   const [qty, setQty] = useState(order.packageQuantity);
-  const [time, setTime] = useState(order.deliveryTime);
+  const [preferredTime, setPreferredTime] = useState('');
+  const [amPm, setAmPm] = useState('AM');
   const firestore = useFirestore();
+  const rawItemsQuery = useMemoFirebase(() => collection(firestore, 'raw_items'), [firestore]);
+  const { data: rawItems = [] } = useCollection<RawItem>(rawItemsQuery);
   const { toast } = useToast();
 
   const pkg = packages.find(p => p.name === order.packageName);
-  const availableDates = pkg ? Object.keys(pkg.schemeAssignments || {}) : [];
+  const availableDates = useMemo(() => pkg ? Array.from(new Set(Object.keys(pkg.schemeAssignments || {}))) : [], [pkg]);
   
-  // Filter meals for the selected date
-  const availableMealIdsForDate = selectedDate && pkg?.schemeAssignments ? pkg.schemeAssignments[selectedDate] || [] : [];
-  const availableMealsForDate = menuItems.filter(m => availableMealIdsForDate.includes(m.id));
+  const selectedPackage = packages.find(p => p.id === selectedPackageId);
 
-  // Initialize selected meal to the first item of the order, if available in the selected date's options
+  // Initialize selected package to the order's package if available
   useEffect(() => {
-    if (selectedDate && availableMealsForDate.length > 0) {
-      const currentOrderMealId = order.items.length > 0 ? order.items[0].menuItemId : '';
-      if (availableMealIdsForDate.includes(currentOrderMealId)) {
-        setSelectedMealId(currentOrderMealId);
-      } else {
-        setSelectedMealId(availableMealsForDate[0].id);
-      }
+    if (pkg) {
+      setSelectedPackageId(pkg.id);
     }
-  }, [selectedDate, availableMealIdsForDate]);
-
-  const selectedMeal = menuItems.find(m => m.id === selectedMealId);
+    const deliveryTime = order.deliveryTime || "10:30 AM";
+    const [t, p] = deliveryTime.split(' ');
+    setPreferredTime(t || "10:30");
+    setAmPm(p || "AM");
+    setQty(order.packageQuantity || 1);
+  }, [pkg, order]);
 
   const handleUpdate = () => {
-    if (!selectedDate || !selectedMealId) return;
+    if (!selectedDate || !selectedPackageId) return;
 
     const orderRef = doc(firestore, 'orders', order.id);
-    
-    // This assumes we are updating the order. In reality, scheme orders might have daily items.
-    // The user said "allow admin to change meal of customer of that day in that scheme."
-    // This likely means updating the dailyItems or similar for the order.
-    // Since I don't know the exact data structure for daily item changes, 
-    // I will simulate it by updating the order items based on the selection.
-    
-    const update = {
-      items: [{
-        menuItemId: selectedMeal.id,
-        name: selectedMeal.name,
+    const itemsForDate = (selectedPackage.schemeAssignments && selectedPackage.schemeAssignments[selectedDate]) || [];
+    const newDailyItems = itemsForDate.map(id => {
+      const m = menuItems.find(m => m.id === id);
+      return {
+        menuItemId: id,
+        name: m?.name || 'Unknown',
         quantity: qty,
-        price: selectedMeal.price,
-        type: selectedMeal.type
-      }],
-      packageQuantity: qty,
-      deliveryTime: time
+        price: m?.price || 0,
+        type: m?.type || 'Veg'
+      };
+    });
+    
+    const update: any = {
+      deliveryTime: `${preferredTime} ${amPm}`,
+      [`dailyItemsOverride.${selectedDate}`]: newDailyItems
     };
 
     updateDocumentNonBlocking(orderRef, update);
 
     toast({
-      title: "Meal Updated",
-      description: `Meal for ${selectedDate} updated to ${selectedMeal.name}.`,
+      title: "Order Updated",
+      description: `Meal for ${selectedDate} updated to ${selectedPackage?.name}.`,
     });
     onOpenChange(false);
   };
@@ -87,7 +84,7 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
       <DialogContent className="rounded-[2.5rem] max-w-2xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Change Meal for Order #{order.id}</DialogTitle>
-          <DialogDescription>Update meal, quantity, and time for the selected date.</DialogDescription>
+          <DialogDescription>Update scheme, quantity, and time for the selected date.</DialogDescription>
         </DialogHeader>
         
         <div className="py-4 space-y-4">
@@ -107,28 +104,48 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
 
           {selectedDate && (
             <div className="space-y-2">
-              <Label>Select Meal</Label>
-              <Select value={selectedMealId} onValueChange={setSelectedMealId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a meal" />
+              <Label>Select Scheme</Label>
+              <Select value={selectedPackageId} onValueChange={setSelectedPackageId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a scheme" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMealsForDate.map(meal => (
-                    <SelectItem key={meal.id} value={meal.id}>{meal.name}</SelectItem>
+                  {packages
+                    .filter(p => p.schemeAssignments && p.schemeAssignments[selectedDate])
+                    .map(p => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               
-              {selectedMeal && (
-                <div className="bg-secondary/20 p-4 rounded-xl mt-2">
-                  <p className="font-bold">{selectedMeal.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedMeal.description}</p>
-                  {selectedMeal.ingredients && (
-                    <div className="mt-2 text-xs">
-                      <p className="font-bold">Items included:</p>
-                      {selectedMeal.ingredients.map((ing, i) => <p key={i}>{ing.rawItemId} ({ing.quantity})</p>)}
-                    </div>
-                  )}
+              {selectedPackage && (
+                <div className="bg-secondary/20 p-4 rounded-xl mt-4 border border-secondary">
+                  <h4 className="font-bold text-sm mb-1">{selectedPackage.name}</h4>
+                  <p className="text-xs text-muted-foreground mb-3">{selectedPackage.description}</p>
+                  
+                  {(() => {
+                    const itemsForDate = (selectedPackage.schemeAssignments && selectedPackage.schemeAssignments[selectedDate]) || [];
+                    if (itemsForDate.length === 0) return null;
+                    return (
+                      <div className="mt-2 text-xs">
+                        <p className="font-semibold text-xs text-secondary-foreground mb-1">Items included:</p>
+                        <ul className="list-disc pl-4 space-y-0.5">
+                          {itemsForDate.map((menuItemId, i) => {
+                            const menuItem = menuItems.find(m => m.id === menuItemId);
+                            return (
+                              <li key={i}>{menuItem?.name || menuItemId}</li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+                  
+                  <div className="mt-3 pt-3 border-t border-secondary/50 flex justify-between text-xs font-medium">
+                    <span>Type: {selectedPackage.type}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -140,14 +157,25 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
               <Input type="number" value={qty} onChange={(e) => setQty(Number(e.target.value))} />
             </div>
             <div className="space-y-2">
-              <Label>Delivery Time</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Label>Preferred Time</Label>
+              <div className="flex gap-2">
+                <Input type="text" value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)} />
+                <Select value={amPm} onValueChange={setAmPm}>
+                  <SelectTrigger className="w-[80px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="PM">PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button onClick={handleUpdate}>Update Meal</Button>
+          <Button onClick={handleUpdate}>Update</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

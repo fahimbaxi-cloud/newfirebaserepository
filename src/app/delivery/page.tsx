@@ -210,6 +210,10 @@ export default function DeliveryDashboard() {
   );
 
   const getPackageItems = (order: Order, targetDate: Date = new Date()) => {
+    const dateKey = format(targetDate, 'yyyy-MM-dd');
+    if (order.dailyItemsOverride && order.dailyItemsOverride[dateKey]) {
+      return order.dailyItemsOverride[dateKey];
+    }
     if (!allPackages || !menu) return [];
     const pkg = allPackages.find((p: any) => p.name === order.packageName);
     if (pkg) {
