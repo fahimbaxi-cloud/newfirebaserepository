@@ -34,7 +34,7 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
   const { toast } = useToast();
 
   const pkg = packages.find(p => p.name === order.packageName);
-  const availableDates = useMemo(() => pkg ? Array.from(new Set(Object.keys(pkg.schemeAssignments || {}))) : [], [pkg]);
+  const availableDates = useMemo(() => pkg ? Array.from(new Set(Object.keys(pkg.schemeAssignments || {}))).sort() : [], [pkg]);
   
   const selectedPackage = packages.find(p => p.id === selectedPackageId);
 
