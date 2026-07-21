@@ -269,23 +269,31 @@ export default function CustomerHome() {
   }, [currentUser, allOrders, allPackages, deliveryDate]);
 
   const getDeliveryItems = (order: Order, targetDate: Date = new Date()) => {
+    const dateKey = format(targetDate, 'yyyy-MM-dd');
+    if (order.dailyItemsOverride?.[dateKey]) {
+      return order.dailyItemsOverride[dateKey];
+    }
     if (!allPackages || !menu) return [];
-    const pkg = allPackages.find((p: any) => p.name === order.packageName);
+    
+    // Check for package override
+    const pkgId = order.dailyPackageOverride?.[dateKey];
+    const pkg = pkgId 
+      ? allPackages.find((p: any) => p.id === pkgId)
+      : allPackages.find((p: any) => p.name === order.packageName);
+
     if (pkg) {
       if (pkg.type === 'monthly' || pkg.type === 'scheme') {
         const assignments = pkg.type === 'monthly' ? (pkg as any).monthlyAssignments : pkg.schemeAssignments as any;
         if (assignments) {
           let dayItems: any[] = [];
           if (pkg.type === 'monthly') {
-            const dateKey = format(targetDate, 'yyyy-MM-dd');
             dayItems = assignments[dateKey] || [];
           } else if (pkg.type === 'scheme') {
             const startDate = pkg.startDate ? startOfDay(parseISO(pkg.startDate)) : startOfDay(new Date());
             const target = startOfDay(targetDate);
             const diffDays = differenceInDays(target, startDate);
             const dateKeyByDiff = String(diffDays + 1);
-            const dateKeyByFormat = format(targetDate, 'yyyy-MM-dd');
-            dayItems = assignments[dateKeyByDiff] || assignments[dateKeyByFormat] || [];
+            dayItems = assignments[dateKeyByDiff] || assignments[dateKey] || [];
           }
           
           if (dayItems.length > 0) {
@@ -425,7 +433,7 @@ export default function CustomerHome() {
                 <div>
                   <h2 className="text-2xl font-headline font-bold text-accent flex items-center gap-2">
                     <Truck className="w-6 h-6 text-primary" />
-                    Scheduled Deliveries
+                    Scheduled delivery
                   </h2>
                   <p className="text-muted-foreground text-sm mt-1">
                     Check your meals and real-time status for any specific date.
@@ -486,7 +494,14 @@ export default function CustomerHome() {
 
                           <h3 className="font-bold text-lg text-accent leading-tight flex items-center gap-1.5">
                             <PackageIcon className="w-5 h-5 text-primary/70 shrink-0" />
-                            {order.packageName || "Custom Meal"}
+                            {(() => {
+                               const dateKey = format(deliveryDate, 'yyyy-MM-dd');
+                               const pkgId = order.dailyPackageOverride?.[dateKey];
+                               const pkg = pkgId 
+                                 ? allPackages.find((p: any) => p.id === pkgId)
+                                 : allPackages.find((p: any) => p.name === order.packageName);
+                               return pkg?.name || order.packageName || "Custom Meal";
+                            })()}
                             {order.packageQuantity > 1 && (
                               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-lg font-black ml-1">
                                 {order.packageQuantity}x
@@ -496,7 +511,12 @@ export default function CustomerHome() {
 
                           <div className="flex items-center gap-2 text-muted-foreground mt-2 mb-4">
                             <Clock className="w-4 h-4 text-primary/60 shrink-0" />
-                            <span className="text-xs font-bold">{order.slot} • {order.deliveryTime}</span>
+                            <span className="text-xs font-bold">
+                               {(() => {
+                                 const dateKey = format(deliveryDate, 'yyyy-MM-dd');
+                                 return `${order.dailySlotOverride?.[dateKey] || order.slot} • ${order.dailyDeliveryTimeOverride?.[dateKey] || order.deliveryTime}`;
+                               })()}
+                            </span>
                           </div>
 
                           {/* Items for this day */}
