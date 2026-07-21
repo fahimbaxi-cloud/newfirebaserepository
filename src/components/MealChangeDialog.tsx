@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Order, MenuItem, BroadcastPackage, RawItem } from '@/lib/types';
+import { Order, MenuItem, BroadcastPackage, RawItem, TimeSlot } from '@/lib/types';
 import { useFirestore, updateDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, collection, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +27,7 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
   const [qty, setQty] = useState(order.packageQuantity);
   const [preferredTime, setPreferredTime] = useState('');
   const [amPm, setAmPm] = useState('AM');
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot>(order.slot);
   const firestore = useFirestore();
   const rawItemsQuery = useMemoFirebase(() => collection(firestore, 'raw_items'), [firestore]);
   const { data: rawItems = [] } = useCollection<RawItem>(rawItemsQuery);
@@ -52,6 +53,7 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
       setPreferredTime(t || "10:30");
       setAmPm(p || "AM");
       setQty(order.packageQuantity || 1);
+      setSelectedSlot(order.slot);
       return;
     }
 
@@ -73,7 +75,10 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
     const [t, p] = overrideTime.split(' ');
     setPreferredTime(t || "10:30");
     setAmPm(p || "AM");
-  }, [selectedDate, order.dailyItemsOverride, order.dailyDeliveryTimeOverride, order.dailyPackageOverride, order.packageQuantity, order.deliveryTime, pkg]);
+    
+    const overrideSlot = order.dailySlotOverride?.[selectedDate] || order.slot;
+    setSelectedSlot(overrideSlot);
+  }, [selectedDate, order.dailyItemsOverride, order.dailyDeliveryTimeOverride, order.dailyPackageOverride, order.dailySlotOverride, order.packageQuantity, order.deliveryTime, order.slot, pkg]);
 
   const handleUpdate = () => {
     if (!selectedDate || !selectedPackageId) return;
@@ -94,7 +99,8 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
     const update: any = {
       [`dailyItemsOverride.${selectedDate}`]: newDailyItems,
       [`dailyDeliveryTimeOverride.${selectedDate}`]: `${preferredTime} ${amPm}`,
-      [`dailyPackageOverride.${selectedDate}`]: selectedPackageId
+      [`dailyPackageOverride.${selectedDate}`]: selectedPackageId,
+      [`dailySlotOverride.${selectedDate}`]: selectedSlot
     };
 
     updateDoc(orderRef, update)
@@ -187,6 +193,18 @@ export function MealChangeDialog({ open, onOpenChange, order, menuItems, package
                 <div className="space-y-2">
                   <Label>Quantity</Label>
                   <Input type="number" value={qty} onChange={(e) => setQty(Number(e.target.value))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Slot</Label>
+                  <Select value={selectedSlot} onValueChange={(v: TimeSlot) => setSelectedSlot(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Morning">Morning</SelectItem>
+                      <SelectItem value="Noon">Noon</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Preferred Time</Label>

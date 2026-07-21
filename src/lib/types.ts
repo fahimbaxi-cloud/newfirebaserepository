@@ -104,6 +104,7 @@ export interface Order {
   }[]>;
   dailyDeliveryTimeOverride?: Record<string, string>;
   dailyPackageOverride?: Record<string, string>;
+  dailySlotOverride?: Record<string, TimeSlot>;
 }
 
 export interface User {
