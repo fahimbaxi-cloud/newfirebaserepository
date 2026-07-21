@@ -286,7 +286,11 @@ export default function CustomerOrdersPage() {
     }
     const pkg = allPackages.find(p => p.name === order.packageName);
     if (pkg && pkg.items) {
-      return pkg.items.map(id => menu.find(m => m.id === id)).filter(Boolean).filter((m: any) => m.show !== false);
+      return pkg.items
+        .map(id => menu.find(m => m.id === id))
+        .filter(Boolean)
+        .filter((m: any) => m.show !== false)
+        .map((m: any) => ({ ...m, quantity: order.packageQuantity || 1 }));
     }
     return (order.items || []).filter((item: any) => {
       const menuItem = menu.find(m => m.id === item.menuItemId || m.name === item.name);
@@ -294,7 +298,7 @@ export default function CustomerOrdersPage() {
     });
   };
 
-  const PackageItemCompact = ({ item, quantity = 1 }: { item: any, quantity?: number }) => (
+  const PackageItemCompact = ({ item }: { item: any }) => (
     <div className="flex items-center gap-2">
       {item.type === 'Veg' ? (
         <Leaf className="w-3 h-3 text-green-500 shrink-0" />
@@ -302,7 +306,7 @@ export default function CustomerOrdersPage() {
         <Flame className="w-3 h-3 text-red-500 shrink-0" />
       )}
       <span className="text-[11px] font-bold text-slate-600">
-        {quantity}x {item.name}
+        {item.quantity}x {item.name}
       </span>
     </div>
   );
@@ -317,7 +321,7 @@ export default function CustomerOrdersPage() {
         />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-black text-accent truncate leading-tight">{item.name}</p>
+        <p className="text-xs font-black text-accent truncate leading-tight">{item.quantity}x {item.name}</p>
         <p className={cn("text-[9px] font-bold uppercase", item.type === 'Veg' ? "text-green-600" : "text-red-600")}>{item.type}</p>
       </div>
     </div>
@@ -395,6 +399,7 @@ export default function CustomerOrdersPage() {
                 const isOpen = !!openDays[dayKey];
                 const dayStatus = getDailyStatus(order, dateKey);
                 const items = getPackageItems(order, dateKey ? parseISO(dateKey) : new Date());
+                const overriddenTime = order.dailyDeliveryTimeOverride?.[dateKey || ''];
                 return (
                   <Collapsible key={dayKey} open={isOpen} onOpenChange={() => toggleDay(dayKey)} className="w-full">
                     <div className={cn("flex items-center justify-between p-2.5 rounded-2xl border transition-all", isOpen ? "bg-white border-primary/30 shadow-sm" : "bg-secondary/20 border-secondary/30")}>
@@ -403,6 +408,7 @@ export default function CustomerOrdersPage() {
                         <div>
                           <p className="text-xs font-black text-accent">{label}</p>
                           <p className="text-[9px] text-muted-foreground font-bold">{items.map(i => i.name).join(', ')}</p>
+                          {overriddenTime && <p className="text-[9px] font-black text-blue-600">Time: {overriddenTime}</p>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -419,7 +425,7 @@ export default function CustomerOrdersPage() {
                     <CollapsibleContent className="animate-in slide-in-from-top-2 duration-300">
                       <div className="mt-1 px-1 space-y-1">
                         {items.map((item, i) => (
-                          <PackageItemCompact key={i} item={item} quantity={order.packageQuantity || 1} />
+                          <PackageItemCompact key={i} item={item} />
                         ))}
                       </div>
                     </CollapsibleContent>

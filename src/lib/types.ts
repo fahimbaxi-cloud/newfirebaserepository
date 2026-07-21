@@ -102,6 +102,8 @@ export interface Order {
     price: number;
     type: VegNonVeg;
   }[]>;
+  dailyDeliveryTimeOverride?: Record<string, string>;
+  dailyPackageOverride?: Record<string, string>;
 }
 
 export interface User {

@@ -650,7 +650,9 @@ export default function DeliveryDashboard() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5 text-blue-600" />
-                            <span className="text-xs font-bold text-slate-700">{order.slot} • {order.deliveryTime}</span>
+                            <span className="text-xs font-bold text-slate-700">
+                              {order.slot} • {order.dailyDeliveryTimeOverride?.[format(selectedDate || new Date(), 'yyyy-MM-dd')] || order.deliveryTime}
+                            </span>
                           </div>
                         </div>
                       </TableCell>
