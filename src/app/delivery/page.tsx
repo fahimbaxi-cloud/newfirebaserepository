@@ -211,26 +211,29 @@ export default function DeliveryDashboard() {
 
   const getPackageItems = (order: Order, targetDate: Date = new Date()) => {
     const dateKey = format(targetDate, 'yyyy-MM-dd');
-    if (order.dailyItemsOverride && order.dailyItemsOverride[dateKey]) {
+    if (order.dailyItemsOverride?.[dateKey]) {
       return order.dailyItemsOverride[dateKey];
     }
     if (!allPackages || !menu) return [];
-    const pkg = allPackages.find((p: any) => p.name === order.packageName);
+
+    const pkgId = order.dailyPackageOverride?.[dateKey];
+    const pkg = pkgId 
+      ? allPackages.find((p: any) => p.id === pkgId)
+      : allPackages.find((p: any) => p.name === order.packageName);
+
     if (pkg) {
       if (pkg.type === 'monthly' || pkg.type === 'scheme') {
         const assignments = pkg.type === 'monthly' ? pkg.monthlyAssignments : pkg.schemeAssignments;
         if (assignments) {
           let dayItems: any[] = [];
           if (pkg.type === 'monthly') {
-            const dateKey = format(targetDate, 'yyyy-MM-dd');
             dayItems = assignments[dateKey] || [];
           } else if (pkg.type === 'scheme') {
             const startDate = pkg.startDate ? startOfDay(parseISO(pkg.startDate)) : startOfDay(new Date());
             const target = startOfDay(targetDate);
             const diffDays = differenceInDays(target, startDate);
             const dateKeyByDiff = String(diffDays + 1);
-            const dateKeyByFormat = format(targetDate, 'yyyy-MM-dd');
-            dayItems = assignments[dateKeyByDiff] || assignments[dateKeyByFormat] || [];
+            dayItems = assignments[dateKeyByDiff] || assignments[dateKey] || [];
           }
           
           if (dayItems.length > 0) {
@@ -651,7 +654,7 @@ export default function DeliveryDashboard() {
                           <div className="flex items-center gap-2">
                             <Clock className="w-3.5 h-3.5 text-blue-600" />
                             <span className="text-xs font-bold text-slate-700">
-                              {order.slot} • {order.dailyDeliveryTimeOverride?.[format(selectedDate || new Date(), 'yyyy-MM-dd')] || order.deliveryTime}
+                              {order.dailySlotOverride?.[format(selectedDate || new Date(), 'yyyy-MM-dd')] || order.slot} • {order.dailyDeliveryTimeOverride?.[format(selectedDate || new Date(), 'yyyy-MM-dd')] || order.deliveryTime}
                             </span>
                           </div>
                         </div>
@@ -669,13 +672,17 @@ export default function DeliveryDashboard() {
                       <TableCell className="align-top py-6">
                         <div className="space-y-3">
                           {(() => {
-                            const pkg = allPackages.find((p: any) => p.name === order.packageName);
+                            const dateKey = format(selectedDate || new Date(), 'yyyy-MM-dd');
+                            const pkgId = order.dailyPackageOverride?.[dateKey];
+                            const pkg = pkgId 
+                              ? allPackages.find((p: any) => p.id === pkgId)
+                              : allPackages.find((p: any) => p.name === order.packageName);
                             return (
                               <Badge variant="outline" className="bg-slate-50 text-[10px] font-black border-slate-200 h-6 text-slate-700 uppercase flex items-center gap-1 px-3 w-fit">
                                 <Package className="w-3 h-3" />
                                 {order.type === 'Subscription' 
-                                  ? `${order.packageName || "Subscription"} ${pkg?.type ? `(${pkg.type})` : ''} (Day ${(selectedDate || new Date()).getDate()})` 
-                                  : `${order.packageName || "Custom"} ${pkg?.type ? `(${pkg.type})` : ''}`}
+                                  ? `${pkg?.name || order.packageName || "Subscription"} ${pkg?.type ? `(${pkg.type})` : ''} (Day ${(selectedDate || new Date()).getDate()})` 
+                                  : `${pkg?.name || order.packageName || "Custom"} ${pkg?.type ? `(${pkg.type})` : ''}`}
                               </Badge>
                             );
                           })()}
@@ -689,7 +696,13 @@ export default function DeliveryDashboard() {
                       <TableCell className="text-center align-top py-6">
                         <div className="flex flex-col items-center gap-1">
                           <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-black text-blue-600 shadow-sm">
-                            {order.packageQuantity || 1}
+                            {(() => {
+                              const dateKey = format(selectedDate || new Date(), 'yyyy-MM-dd');
+                              if (order.dailyItemsOverride?.[dateKey] && order.dailyItemsOverride[dateKey].length > 0) {
+                                return order.dailyItemsOverride[dateKey][0].quantity;
+                              }
+                              return order.packageQuantity || 1;
+                            })()}
                           </div>
                           <span className="text-[8px] font-black uppercase text-blue-600/60 tracking-tighter">Sets</span>
                         </div>
@@ -757,13 +770,25 @@ export default function DeliveryDashboard() {
                         <p className="text-xs font-bold">{selectedOrderForDetails.slot} • {selectedOrderForDetails.deliveryTime}</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Package: {(() => {
-                            const pkg = allPackages.find((p: any) => p.name === selectedOrderForDetails.packageName);
+                            const dateKey = format(selectedDate || new Date(), 'yyyy-MM-dd');
+                            const pkgId = selectedOrderForDetails.dailyPackageOverride?.[dateKey];
+                            const pkg = pkgId 
+                              ? allPackages.find((p: any) => p.id === pkgId)
+                              : allPackages.find((p: any) => p.name === selectedOrderForDetails.packageName);
                             return selectedOrderForDetails.type === 'Subscription' 
-                              ? `${selectedOrderForDetails.packageName || "Subscription"} ${pkg?.type ? `(${pkg.type})` : ''} (Day ${(selectedDate || new Date()).getDate()})` 
-                              : `${selectedOrderForDetails.packageName || "Custom"} ${pkg?.type ? `(${pkg.type})` : ''}`;
+                              ? `${pkg?.name || selectedOrderForDetails.packageName || "Subscription"} ${pkg?.type ? `(${pkg.type})` : ''} (Day ${(selectedDate || new Date()).getDate()})` 
+                              : `${pkg?.name || selectedOrderForDetails.packageName || "Custom"} ${pkg?.type ? `(${pkg.type})` : ''}`;
                           })()}
                         </p>
-                        <p className="font-black text-blue-600 mt-2">{selectedOrderForDetails.packageQuantity || 1} Sets</p>
+                        <p className="font-black text-blue-600 mt-2">
+                          {(() => {
+                            const dateKey = format(selectedDate || new Date(), 'yyyy-MM-dd');
+                            if (selectedOrderForDetails.dailyItemsOverride?.[dateKey] && selectedOrderForDetails.dailyItemsOverride[dateKey].length > 0) {
+                              return selectedOrderForDetails.dailyItemsOverride[dateKey][0].quantity;
+                            }
+                            return selectedOrderForDetails.packageQuantity || 1;
+                          })()} Sets
+                        </p>
                       </div>
                     </div>
                   </div>
