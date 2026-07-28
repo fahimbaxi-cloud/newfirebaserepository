@@ -480,8 +480,35 @@ export default function MenuManagement() {
 
             <div className="space-y-4">
               <Label>Item Picture</Label>
-              <div onClick={() => fileInputRef.current?.click()} className="relative w-full aspect-video rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-secondary/20 hover:bg-secondary/40 transition-all cursor-pointer flex flex-col items-center justify-center overflow-hidden">
-                {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : <div className="text-center p-4"><Upload className="w-8 h-8 text-primary mx-auto mb-2"/><span className="text-xs font-bold">Upload Food Photo</span></div>}
+              <div className="grid grid-cols-2 gap-4">
+                <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-24 rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-dashed">
+                  <Upload className="w-6 h-6" />
+                  <span className="text-xs font-bold">From Computer</span>
+                </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-24 rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-dashed">
+                      <Sparkles className="w-6 h-6" />
+                      <span className="text-xs font-bold">From BB</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] max-w-4xl max-h-[90vh] flex flex-col p-8">
+                    <DialogHeader>
+                      <DialogTitle>Select from BacchaBite</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
+                      {menuData?.filter(item => !item.imageUrl?.includes('picsum.photos')).map((item) => (
+                        <div key={item.id} className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
+                          <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <div className="mt-4 relative w-full aspect-video rounded-2xl border-2 border-muted-foreground/20 bg-secondary/20 flex items-center justify-center overflow-hidden">
+                {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : <p className="text-xs font-bold text-muted-foreground">No image selected</p>}
               </div>
               <div className="flex items-start gap-2 bg-blue-50 p-3 rounded-xl border border-blue-100">
                 <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />

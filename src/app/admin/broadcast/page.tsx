@@ -989,22 +989,38 @@ export default function BroadcastPage() {
                       
                       <div className="space-y-2">
                         <Label className="text-white/90 font-bold uppercase text-[10px] tracking-widest">Featured Photo</Label>
-                        <div 
-                          onClick={() => fileInputRef.current?.click()} 
-                          className="relative w-full aspect-video rounded-2xl border-2 border-dashed border-white/20 bg-white/10 hover:bg-white/20 transition-all cursor-pointer flex flex-col items-center justify-center overflow-hidden"
-                        >
-                          {imagePreview ? (
-                            <>
-                              <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                <span className="text-[10px] font-black text-white uppercase bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">Change Photo</span>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="h-24 rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-dashed border-white/20 bg-white/10 hover:bg-white/20 text-white">
+                            <Upload className="w-6 h-6" />
+                            <span className="text-xs font-bold">From Computer</span>
+                          </Button>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" className="h-24 rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-dashed border-white/20 bg-white/10 hover:bg-white/20 text-white">
+                                <Sparkles className="w-6 h-6" />
+                                <span className="text-xs font-bold">From BB</span>
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="rounded-[2.5rem] max-w-4xl max-h-[90vh] flex flex-col p-8">
+                              <DialogHeader>
+                                <DialogTitle>Select from BacchaBite</DialogTitle>
+                              </DialogHeader>
+                              <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
+                                {menuItems?.filter(item => !item.imageUrl?.includes('picsum.photos')).map((item) => (
+                                  <div key={item.id} className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
+                                    <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
+                                    <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
+                                  </div>
+                                ))}
                               </div>
-                            </>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                        <div className="relative w-full aspect-video rounded-2xl border-2 border-dashed border-white/20 bg-white/10 mt-4 overflow-hidden flex items-center justify-center">
+                          {imagePreview ? (
+                            <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
                           ) : (
-                            <div className="text-center p-4">
-                              <Upload className="w-8 h-8 text-white mx-auto mb-2"/>
-                              <span className="text-[10px] font-bold">Upload Food Pic</span>
-                            </div>
+                            <p className="text-xs font-bold text-white/50">No image selected</p>
                           )}
                         </div>
                         <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
