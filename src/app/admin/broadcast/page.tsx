@@ -91,6 +91,17 @@ export default function BroadcastPage() {
   const { data: menuData } = useCollection<MenuItem>(menuQuery);
   const menuItems = menuData || [];
 
+  const bbImages = useMemo(() => {
+    const images = [];
+    if (menuData) {
+      images.push(...menuData.filter(item => item.imageUrl && !item.imageUrl.includes('picsum.photos')).map(item => ({ id: item.id, imageUrl: item.imageUrl, name: item.name })));
+    }
+    if (packagesData) {
+      images.push(...packagesData.filter(pkg => pkg.imageUrl && !pkg.imageUrl.includes('picsum.photos')).map(pkg => ({ id: pkg.id, imageUrl: pkg.imageUrl, name: pkg.name })));
+    }
+    return images;
+  }, [menuData, packagesData]);
+
   const [dailySearchQuery, setDailySearchQuery] = useState('');
   const [monthlySearchQuery, setMonthlySearchQuery] = useState('');
   const [packageSearchQuery, setPackageSearchQuery] = useState('');
@@ -1015,7 +1026,7 @@ export default function BroadcastPage() {
                                 className="mb-4" 
                               />
                               <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
-                                {menuItems?.filter(item => !item.imageUrl?.includes('picsum.photos') && item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
+                                {bbImages?.filter(item => item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
                                   <DialogClose asChild key={item.id}>
                                     <div className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
                                       <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />

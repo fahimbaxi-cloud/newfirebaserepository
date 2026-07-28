@@ -32,6 +32,20 @@ export default function MenuManagement() {
   const menuQuery = useMemoFirebase(() => collection(firestore, 'menu_items'), [firestore]);
   const { data: menuData, isLoading: menuLoading } = useCollection<MenuItem>(menuQuery);
   
+  const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
+  const { data: packagesData } = useCollection<BroadcastPackage>(packagesQuery);
+
+  const bbImages = useMemo(() => {
+    const images = [];
+    if (menuData) {
+      images.push(...menuData.filter(item => item.imageUrl && !item.imageUrl.includes('picsum.photos')).map(item => ({ id: item.id, imageUrl: item.imageUrl, name: item.name })));
+    }
+    if (packagesData) {
+      images.push(...packagesData.filter(pkg => pkg.imageUrl && !pkg.imageUrl.includes('picsum.photos')).map(pkg => ({ id: pkg.id, imageUrl: pkg.imageUrl, name: pkg.name })));
+    }
+    return images;
+  }, [menuData, packagesData]);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Veg' | 'Non-Veg'>('all');
   const [showFilter, setShowFilter] = useState<'all' | 'visible' | 'hidden'>('all');
@@ -86,7 +100,6 @@ export default function MenuManagement() {
   const { data: unitsData } = useCollection<Unit>(unitsQuery);
   const units = unitsData || [];
 
-  const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
   const { data: allPackages } = useCollection<BroadcastPackage>(packagesQuery);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -505,7 +518,7 @@ export default function MenuManagement() {
                       className="mb-4" 
                     />
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
-                      {menuData?.filter(item => !item.imageUrl?.includes('picsum.photos') && item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
+                      {bbImages?.filter(item => item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
                         <DialogClose asChild key={item.id}>
                           <div className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
                             <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
