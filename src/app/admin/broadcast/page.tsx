@@ -29,14 +29,15 @@ import {
   Loader2,
   ZoomIn,
   Search,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
 import { BroadcastPackage, MenuItem, User } from '@/lib/types';
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTrigger, DialogClose, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function BroadcastPage() {
   const firestore = useFirestore();
@@ -44,6 +45,7 @@ export default function BroadcastPage() {
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [bbSearchQuery, setBbSearchQuery] = useState('');
 
   // Auth check to gate queries
   useEffect(() => {
@@ -1005,12 +1007,21 @@ export default function BroadcastPage() {
                               <DialogHeader>
                                 <DialogTitle>Select from BacchaBite</DialogTitle>
                               </DialogHeader>
+                              <Input 
+                                type="text" 
+                                placeholder="Search by name..." 
+                                value={bbSearchQuery} 
+                                onChange={(e) => setBbSearchQuery(e.target.value)} 
+                                className="mb-4" 
+                              />
                               <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
-                                {menuItems?.filter(item => !item.imageUrl?.includes('picsum.photos')).map((item) => (
-                                  <div key={item.id} className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
-                                    <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
-                                    <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
-                                  </div>
+                                {menuItems?.filter(item => !item.imageUrl?.includes('picsum.photos') && item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
+                                  <DialogClose asChild key={item.id}>
+                                    <div className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
+                                      <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
+                                      <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
+                                    </div>
+                                  </DialogClose>
                                 ))}
                               </div>
                             </DialogContent>

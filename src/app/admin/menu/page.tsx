@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -35,6 +35,7 @@ export default function MenuManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'Veg' | 'Non-Veg'>('all');
   const [showFilter, setShowFilter] = useState<'all' | 'visible' | 'hidden'>('all');
+  const [bbSearchQuery, setBbSearchQuery] = useState('');
 
   const [activeTab, setActiveTab] = useState('all');
   const [schemeStartDate, setSchemeStartDate] = useState<Date | undefined>(undefined);
@@ -496,12 +497,21 @@ export default function MenuManagement() {
                     <DialogHeader>
                       <DialogTitle>Select from BacchaBite</DialogTitle>
                     </DialogHeader>
+                    <Input 
+                      type="text" 
+                      placeholder="Search by name..." 
+                      value={bbSearchQuery} 
+                      onChange={(e) => setBbSearchQuery(e.target.value)} 
+                      className="mb-4" 
+                    />
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto">
-                      {menuData?.filter(item => !item.imageUrl?.includes('picsum.photos')).map((item) => (
-                        <div key={item.id} className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
-                          <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
-                        </div>
+                      {menuData?.filter(item => !item.imageUrl?.includes('picsum.photos') && item.name.toLowerCase().includes(bbSearchQuery.toLowerCase())).map((item) => (
+                        <DialogClose asChild key={item.id}>
+                          <div className="cursor-pointer border rounded-lg p-2" onClick={() => { setImagePreview(item.imageUrl); }}>
+                            <img src={item.imageUrl} alt={item.name} className="w-full h-24 object-cover rounded" />
+                            <p className="text-[10px] text-center mt-1 truncate">{item.name}</p>
+                          </div>
+                        </DialogClose>
                       ))}
                     </div>
                   </DialogContent>
