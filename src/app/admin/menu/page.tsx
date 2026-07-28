@@ -38,10 +38,10 @@ export default function MenuManagement() {
   const bbImages = useMemo(() => {
     const images = [];
     if (menuData) {
-      images.push(...menuData.filter(item => item.imageUrl && !item.imageUrl.includes('picsum.photos')).map(item => ({ id: item.id, imageUrl: item.imageUrl, name: item.name })));
+      images.push(...menuData.filter(item => item.imageUrl && !item.imageUrl.includes('picsum.photos')).map(item => ({ id: 'menu-' + item.id, imageUrl: item.imageUrl, name: item.name })));
     }
     if (packagesData) {
-      images.push(...packagesData.filter(pkg => pkg.imageUrl && !pkg.imageUrl.includes('picsum.photos')).map(pkg => ({ id: pkg.id, imageUrl: pkg.imageUrl, name: pkg.name })));
+      images.push(...packagesData.filter(pkg => pkg.imageUrl && !pkg.imageUrl.includes('picsum.photos')).map(pkg => ({ id: 'package-' + pkg.id, imageUrl: pkg.imageUrl, name: pkg.name })));
     }
     return images;
   }, [menuData, packagesData]);
