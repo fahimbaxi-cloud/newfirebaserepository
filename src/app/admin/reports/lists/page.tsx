@@ -89,6 +89,9 @@ export default function ListsReportPage() {
   const { data: ordersData = [] } = useCollection<Order>(useMemoFirebase(() => collection(firestore, 'orders'), [firestore]));
   const orders = ordersData || [];
 
+  const { data: schemeOrdersData = [] } = useCollection<any>(useMemoFirebase(() => collection(firestore, 'scheme_orders'), [firestore]));
+  const schemeOrders = schemeOrdersData || [];
+
   const { data: purchasesData = [] } = useCollection<Purchase>(useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]));
   const purchases = purchasesData || [];
 
@@ -235,13 +238,25 @@ export default function ListsReportPage() {
       case 'delivery': data = users.filter(u => u.role === 'delivery'); break;
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
-        data = orders.flatMap(o => o.items.map(item => ({
-          date: safeParseDate(o.createdAt).toISOString().split('T')[0],
-          item: item.name,
-          quantity: item.quantity,
-          slot: o.slot,
-          id: o.id + '-' + item.menuItemId
-        })));
+        data = [...orders, ...schemeOrders].flatMap(o => {
+          const items = (o.items || []).map(item => ({
+            date: safeParseDate(o.createdAt).toISOString().split('T')[0],
+            item: item.name,
+            quantity: item.quantity,
+            slot: o.slot,
+            id: o.id + '-item-' + item.menuItemId
+          }));
+          const overrides = Object.entries(o.dailyItemsOverride || {}).flatMap(([date, items]) => 
+            items.map(item => ({
+              date: date,
+              item: item.name,
+              quantity: item.quantity,
+              slot: o.dailySlotOverride?.[date] || o.slot,
+              id: o.id + '-override-' + date + '-' + item.menuItemId
+            }))
+          );
+          return [...items, ...overrides];
+        });
         break;
       case 'payments': data = payments; break;
       case 'receipts': data = receipts; break;
