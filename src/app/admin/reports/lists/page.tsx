@@ -345,9 +345,7 @@ export default function ListsReportPage() {
       const startF = startDate ? startOfDay(parseISO(startDate)) : null;
       const endF = endDate ? endOfDay(parseISO(endDate)) : null;
       const rDate = safeParseDate(r.date || r.createdAt);
-      const matchRange = activeLogType === 'item-report' 
-        ? (itemReportDate ? r.date === format(itemReportDate, 'yyyy-MM-dd') : true)
-        : (!startF || rDate >= startF) && (!endF || rDate <= endF);
+      const matchRange = (!startF || rDate >= startF) && (!endF || rDate <= endF);
 
       let c1Val = '', c2Val = '', c3Val = '', c4Val = '', c5Val = '', c6Val = '';
       if (activeLogType === 'order-summary') {
@@ -445,7 +443,7 @@ export default function ListsReportPage() {
     }
 
     return filtered;
-  }, [activeLogType, searchTerm, startDate, endDate, colFilters, sortConfig, rawItems, categories, units, packages, orders, suppliers, users, mfgLogs, payments, receipts, transactions, journalEntries, glAccounts, expenseCats, incomeCats, itemReportDate]);
+  }, [activeLogType, searchTerm, startDate, endDate, colFilters, sortConfig, rawItems, categories, units, packages, orders, suppliers, users, mfgLogs, payments, receipts, transactions, journalEntries, glAccounts, expenseCats, incomeCats]);
 
   const orderSummaryTotals = useMemo(() => {
     if (activeLogType !== 'order-summary') return { qty: 0, amount: 0 };
