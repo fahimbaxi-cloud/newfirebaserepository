@@ -240,17 +240,17 @@ export default function ListsReportPage() {
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
           const items = (o.items || []).map(item => ({
-            date: o.referenceDate || safeParseDate(o.createdAt).toISOString().split('T')[0],
+            date: safeParseDate(o.createdAt).toISOString().split('T')[0],
             item: item.name,
-            quantity: Number(item.quantity || 0),
-            slot: o.slot || 'N/A'
+            quantity: item.quantity,
+            slot: o.slot
           }));
           const overrides = Object.entries(o.dailyItemsOverride || {}).flatMap(([date, items]) => 
             (items as any[]).map(item => ({
               date: date,
               item: item.name,
-              quantity: Number(item.quantity || 0),
-              slot: o.dailySlotOverride?.[date] || o.slot || 'N/A'
+              quantity: item.quantity,
+              slot: o.dailySlotOverride?.[date] || o.slot
             }))
           );
           return [...items, ...overrides];
@@ -427,10 +427,10 @@ export default function ListsReportPage() {
       filtered.sort((a, b) => {
         let valA: any = '', valB: any = '';
         const keyMap: Record<string, string> = { 
-          c1: activeLogType === 'order-summary' ? 'createdAt' : activeLogType === 'trial-balance' ? 'name' : activeLogType === 'journal' ? 'date' : activeLogType === 'items' ? 'name' : activeLogType === 'packages' ? 'name' : activeLogType === 'orders' ? 'id' : activeLogType === 'suppliers' ? 'name' : activeLogType === 'customers' ? 'firstName' : activeLogType === 'delivery' ? 'firstName' : activeLogType === 'mfg-logs' ? 'date' : activeLogType === 'item-report' ? 'date' : 'date',
-          c2: activeLogType === 'order-summary' ? 'customerName' : activeLogType === 'trial-balance' ? 'debit' : activeLogType === 'journal' ? 'debitAccountName' : activeLogType === 'items' ? 'category' : activeLogType === 'packages' ? 'type' : activeLogType === 'orders' ? 'customerName' : activeLogType === 'suppliers' ? 'contactPerson' : activeLogType === 'customers' ? 'bacchabiteId' : activeLogType === 'delivery' ? 'bacchabiteId' : activeLogType === 'mfg-logs' ? 'packageName' : activeLogType === 'item-report' ? 'item' : 'type',
-          c3: activeLogType === 'order-summary' ? 'packageName' : activeLogType === 'trial-balance' ? 'credit' : activeLogType === 'journal' ? 'creditAccountName' : activeLogType === 'items' ? 'unit' : activeLogType === 'packages' ? 'dateContext' : activeLogType === 'orders' ? 'slot' : activeLogType === 'suppliers' ? 'phone' : activeLogType === 'customers' ? 'mobileNumber' : activeLogType === 'delivery' ? 'mobileNumber' : activeLogType === 'mfg-logs' ? 'quantity' : activeLogType === 'item-report' ? 'quantity' : 'categoryName',
-          c4: activeLogType === 'order-summary' ? 'packageQuantity' : activeLogType === 'journal' ? 'amount' : activeLogType === 'items' ? 'currentStock' : activeLogType === 'packages' ? 'price' : activeLogType === 'orders' ? 'total' : activeLogType === 'suppliers' ? 'email' : activeLogType === 'customers' ? 'email' : activeLogType === 'delivery' ? 'email' : activeLogType === 'mfg-logs' ? 'ingredientsUsed' : activeLogType === 'item-report' ? 'slot' : 'amount',
+          c1: activeLogType === 'order-summary' ? 'createdAt' : activeLogType === 'trial-balance' ? 'name' : activeLogType === 'journal' ? 'date' : activeLogType === 'items' ? 'name' : activeLogType === 'packages' ? 'name' : activeLogType === 'orders' ? 'id' : activeLogType === 'suppliers' ? 'name' : activeLogType === 'customers' ? 'firstName' : activeLogType === 'delivery' ? 'firstName' : activeLogType === 'mfg-logs' ? 'date' : 'date',
+          c2: activeLogType === 'order-summary' ? 'customerName' : activeLogType === 'trial-balance' ? 'debit' : activeLogType === 'journal' ? 'debitAccountName' : activeLogType === 'items' ? 'category' : activeLogType === 'packages' ? 'type' : activeLogType === 'orders' ? 'customerName' : activeLogType === 'suppliers' ? 'contactPerson' : activeLogType === 'customers' ? 'bacchabiteId' : activeLogType === 'delivery' ? 'bacchabiteId' : activeLogType === 'mfg-logs' ? 'packageName' : 'type',
+          c3: activeLogType === 'order-summary' ? 'packageName' : activeLogType === 'trial-balance' ? 'credit' : activeLogType === 'journal' ? 'creditAccountName' : activeLogType === 'items' ? 'unit' : activeLogType === 'packages' ? 'dateContext' : activeLogType === 'orders' ? 'slot' : activeLogType === 'suppliers' ? 'phone' : activeLogType === 'customers' ? 'mobileNumber' : activeLogType === 'delivery' ? 'mobileNumber' : activeLogType === 'mfg-logs' ? 'quantity' : 'categoryName',
+          c4: activeLogType === 'order-summary' ? 'packageQuantity' : activeLogType === 'journal' ? 'amount' : activeLogType === 'items' ? 'currentStock' : activeLogType === 'packages' ? 'price' : activeLogType === 'orders' ? 'total' : activeLogType === 'suppliers' ? 'email' : activeLogType === 'customers' ? 'email' : activeLogType === 'delivery' ? 'email' : activeLogType === 'mfg-logs' ? 'ingredientsUsed' : 'amount',
           c5: activeLogType === 'order-summary' ? 'type' : activeLogType === 'journal' ? 'notes' : '',
           c6: activeLogType === 'order-summary' ? 'status' : ''
         };
@@ -863,7 +863,7 @@ export default function ListsReportPage() {
                       c3Val = row.slot || '';
                       c4Val = (row.price || 0).toString();
                     } else if (activeLogType === 'item-report') {
-                      c1Val = row.date ? format(new Date(row.date), 'MMM dd, yyyy') : '';
+                      c1Val = row.date || '';
                       c2Val = row.item || '';
                       c3Val = row.quantity?.toString() || '0';
                       c4Val = row.slot || '';
