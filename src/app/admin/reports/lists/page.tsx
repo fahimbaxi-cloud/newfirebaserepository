@@ -863,7 +863,7 @@ export default function ListsReportPage() {
                       c3Val = row.slot || '';
                       c4Val = (row.price || 0).toString();
                     } else if (activeLogType === 'item-report') {
-                      c1Val = row.date || '';
+                      c1Val = row.date ? format(new Date(row.date), 'MMM dd, yyyy') : '';
                       c2Val = row.item || '';
                       c3Val = row.quantity?.toString() || '0';
                       c4Val = row.slot || '';
