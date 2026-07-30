@@ -345,7 +345,7 @@ export default function ListsReportPage() {
       const startF = startDate ? startOfDay(parseISO(startDate)) : null;
       const endF = endDate ? endOfDay(parseISO(endDate)) : null;
       const rDate = safeParseDate(r.date || r.createdAt);
-      const matchRange = (!startF || rDate >= startF) && (!endF || rDate <= endF);
+      const matchRange = activeLogType === 'item-report' ? true : (!startF || rDate >= startF) && (!endF || rDate <= endF);
 
       let c1Val = '', c2Val = '', c3Val = '', c4Val = '', c5Val = '', c6Val = '';
       if (activeLogType === 'order-summary') {
