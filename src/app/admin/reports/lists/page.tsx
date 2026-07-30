@@ -238,25 +238,35 @@ export default function ListsReportPage() {
       case 'delivery': data = users.filter(u => u.role === 'delivery'); break;
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
-        data = [...orders, ...schemeOrders].flatMap(o => {
+        const flatData = [...orders, ...schemeOrders].flatMap(o => {
           const items = (o.items || []).map(item => ({
             date: safeParseDate(o.createdAt).toISOString().split('T')[0],
             item: item.name,
             quantity: item.quantity,
-            slot: o.slot,
-            id: o.id + '-item-' + item.menuItemId
+            slot: o.slot
           }));
           const overrides = Object.entries(o.dailyItemsOverride || {}).flatMap(([date, items]) => 
-            items.map(item => ({
+            (items as any[]).map(item => ({
               date: date,
               item: item.name,
               quantity: item.quantity,
-              slot: o.dailySlotOverride?.[date] || o.slot,
-              id: o.id + '-override-' + date + '-' + item.menuItemId
+              slot: o.dailySlotOverride?.[date] || o.slot
             }))
           );
           return [...items, ...overrides];
         });
+
+        const grouped = flatData.reduce((acc, curr) => {
+          const key = `${curr.date}-${curr.slot}-${curr.item}`;
+          if (!acc[key]) {
+            acc[key] = { ...curr, id: key };
+          } else {
+            acc[key].quantity += curr.quantity;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+
+        data = Object.values(grouped);
         break;
       case 'payments': data = payments; break;
       case 'receipts': data = receipts; break;
