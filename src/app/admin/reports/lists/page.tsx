@@ -240,7 +240,7 @@ export default function ListsReportPage() {
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
           const items = (o.items || []).map(item => ({
-            date: o.referenceDate || safeParseDate(o.createdAt).toISOString().split('T')[0],
+            date: safeParseDate(o.createdAt).toISOString().split('T')[0],
             item: item.name,
             quantity: item.quantity,
             slot: o.slot
