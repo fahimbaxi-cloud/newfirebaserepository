@@ -445,7 +445,7 @@ export default function ListsReportPage() {
     }
 
     return filtered;
-  }, [activeLogType, searchTerm, startDate, endDate, colFilters, sortConfig, rawItems, categories, units, packages, orders, suppliers, users, mfgLogs, payments, receipts, transactions, journalEntries, glAccounts, expenseCats, incomeCats]);
+  }, [activeLogType, searchTerm, startDate, endDate, colFilters, sortConfig, rawItems, categories, units, packages, orders, suppliers, users, mfgLogs, payments, receipts, transactions, journalEntries, glAccounts, expenseCats, incomeCats, itemReportDate]);
 
   const orderSummaryTotals = useMemo(() => {
     if (activeLogType !== 'order-summary') return { qty: 0, amount: 0 };
