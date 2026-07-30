@@ -512,7 +512,7 @@ export default function ListsReportPage() {
         <div id="log-table-view" className="space-y-6 animate-in slide-in-from-top-4 duration-500">
           <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
             <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between">
-              <div><CardTitle className="text-2xl font-headline font-bold capitalize">{activeLogType === 'item-report' ? 'Order Item Report List' : `Master ${activeLogType.replace('-', ' ')} List`}</CardTitle></div>
+              <div><CardTitle className="text-2xl font-headline font-bold capitalize">{activeLogType === 'item-report' ? 'order item list' : `Master ${activeLogType.replace('-', ' ')} List`}</CardTitle></div>
               <div className="flex items-center gap-2 print:hidden">
                 <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl gap-2 font-bold"><Printer className="w-4 h-4 mr-2" /> Print</Button>
                 <Button variant="outline" size="sm" onClick={handleExportPDF} className="rounded-xl gap-2 font-bold"><FileDown className="w-4 h-4 mr-2" /> Export PDF</Button>
