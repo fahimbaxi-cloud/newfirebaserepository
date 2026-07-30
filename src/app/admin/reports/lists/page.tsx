@@ -242,15 +242,15 @@ export default function ListsReportPage() {
           const items = (o.items || []).map(item => ({
             date: o.referenceDate || safeParseDate(o.createdAt).toISOString().split('T')[0],
             item: item.name,
-            quantity: item.quantity,
-            slot: o.slot
+            quantity: Number(item.quantity || 0),
+            slot: o.slot || 'N/A'
           }));
           const overrides = Object.entries(o.dailyItemsOverride || {}).flatMap(([date, items]) => 
             (items as any[]).map(item => ({
               date: date,
               item: item.name,
-              quantity: item.quantity,
-              slot: o.dailySlotOverride?.[date] || o.slot
+              quantity: Number(item.quantity || 0),
+              slot: o.dailySlotOverride?.[date] || o.slot || 'N/A'
             }))
           );
           return [...items, ...overrides];
