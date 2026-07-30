@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   Dialog, 
   DialogContent, 
@@ -59,7 +61,7 @@ import { collection } from 'firebase/firestore';
 import { Order, Purchase, Payment, CustomerReceipt, ManufacturingLog, GeneralTransaction, JournalEntry, RawItem, User as BBUser, Supplier, Category, Unit, BroadcastPackage, MenuItem, GLAccount, ExpenseCategory, IncomeCategory } from '@/lib/types';
 import { downloadPDF } from '@/lib/pdf-export';
 
-type LogType = 'items' | 'packages' | 'orders' | 'order-summary' | 'suppliers' | 'customers' | 'delivery' | 'mfg-logs' | 'payments' | 'receipts' | 'transactions' | 'trial-balance' | 'journal' | 'menu-master' | null;
+type LogType = 'items' | 'packages' | 'orders' | 'order-summary' | 'item-report' | 'suppliers' | 'customers' | 'delivery' | 'mfg-logs' | 'payments' | 'receipts' | 'transactions' | 'trial-balance' | 'journal' | 'menu-master' | null;
 
 const safeParseDate = (d: any): Date => {
   if (!d) return new Date(0);
@@ -136,6 +138,8 @@ export default function ListsReportPage() {
   const incomeCats = inCatsData || [];
 
   const [activeLogType, setActiveLogType] = useState<LogType>(null);
+  const [itemReportDate, setItemReportDate] = useState<Date | undefined>(undefined);
+  const [isItemReportDatePickerOpen, setIsItemReportDatePickerOpen] = useState(false);
   const [selectedMasterRecord, setSelectedMasterRecord] = useState<any>(null);
   const [isMasterDetailOpen, setIsMasterDetailOpen] = useState(false);
 
@@ -230,6 +234,15 @@ export default function ListsReportPage() {
       case 'customers': data = users.filter(u => u.role === 'customer'); break;
       case 'delivery': data = users.filter(u => u.role === 'delivery'); break;
       case 'mfg-logs': data = mfgLogs; break;
+      case 'item-report':
+        data = orders.flatMap(o => o.items.map(item => ({
+          date: safeParseDate(o.createdAt).toISOString().split('T')[0],
+          item: item.name,
+          quantity: item.quantity,
+          slot: o.slot,
+          id: o.id + '-' + item.menuItemId
+        })));
+        break;
       case 'payments': data = payments; break;
       case 'receipts': data = receipts; break;
       case 'transactions': data = transactions; break;
@@ -368,6 +381,11 @@ export default function ListsReportPage() {
         c2Val = r.type || '';
         c3Val = r.categoryName || '';
         c4Val = (r.amount || 0).toString();
+      } else if (activeLogType === 'item-report') {
+        c1Val = r.date || '';
+        c2Val = r.item || '';
+        c3Val = r.quantity?.toString() || '0';
+        c4Val = r.slot || '';
       }
 
       const matchCol1 = !colFilters.c1 || c1Val.toLowerCase().includes(colFilters.c1.toLowerCase());
@@ -451,6 +469,7 @@ export default function ListsReportPage() {
           { id: 'packages', label: 'Broadcasts', icon: LayoutGrid }, 
           { id: 'orders', label: 'Full Orders', icon: ShoppingCart }, 
           { id: 'order-summary', label: 'Order Summary', icon: ClipboardList }, 
+          { id: 'item-report', label: 'Order Item Report', icon: ClipboardList },
           { id: 'transactions', label: 'Inc / Exp Logs', icon: Wallet }, 
           { id: 'journal', label: 'Journal Logs', icon: BookText }, 
           { id: 'suppliers', label: 'Supplier Master', icon: Truck }, 
@@ -468,7 +487,7 @@ export default function ListsReportPage() {
         <div id="log-table-view" className="space-y-6 animate-in slide-in-from-top-4 duration-500">
           <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
             <CardHeader className="p-8 pb-4 flex flex-row items-center justify-between">
-              <div><CardTitle className="text-2xl font-headline font-bold capitalize">Master {activeLogType.replace('-', ' ')} List</CardTitle></div>
+              <div><CardTitle className="text-2xl font-headline font-bold capitalize">{activeLogType === 'item-report' ? 'Order Item Report List' : `Master ${activeLogType.replace('-', ' ')} List`}</CardTitle></div>
               <div className="flex items-center gap-2 print:hidden">
                 <Button variant="outline" size="sm" onClick={handlePrint} className="rounded-xl gap-2 font-bold"><Printer className="w-4 h-4 mr-2" /> Print</Button>
                 <Button variant="outline" size="sm" onClick={handleExportPDF} className="rounded-xl gap-2 font-bold"><FileDown className="w-4 h-4 mr-2" /> Export PDF</Button>
@@ -704,6 +723,52 @@ export default function ListsReportPage() {
                         </TableHead>
                       </>
                     )}
+                    {activeLogType === 'item-report' && (
+                      <>
+                        <TableHead className="pl-8 py-5">
+                          <SortTrigger label="Date" sortKey="c1" />
+                          <Popover open={isItemReportDatePickerOpen} onOpenChange={setIsItemReportDatePickerOpen}>
+                            <PopoverTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className={cn(
+                                  "h-7 w-full justify-start text-[10px] px-2 rounded-md bg-white/50 border-none font-normal",
+                                  itemReportDate ? "text-primary" : "text-muted-foreground/40"
+                                )}
+                              >
+                                {itemReportDate ? format(itemReportDate, 'MMM dd, yyyy') : "Select Date..."}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={itemReportDate}
+                                onSelect={(date) => {
+                                  setItemReportDate(date);
+                                  setIsItemReportDatePickerOpen(false);
+                                  handleColFilterChange('c1', date ? format(date, 'yyyy-MM-dd') : '');
+                                }}
+                                initialFocus
+                                className="rounded-3xl"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </TableHead>
+                        <TableHead>
+                          <SortTrigger label="Item" sortKey="c2" />
+                          <FilterInput placeholder="Item..." value={colFilters.c2} onChange={v => handleColFilterChange('c2', v)} />
+                        </TableHead>
+                        <TableHead>
+                          <SortTrigger label="Qty" sortKey="c3" />
+                          <FilterInput placeholder="Qty..." value={colFilters.c3} onChange={v => handleColFilterChange('c3', v)} />
+                        </TableHead>
+                        <TableHead className="pr-8 text-right">
+                          <SortTrigger label="Slot" sortKey="c4" className="justify-end" />
+                          <FilterInput placeholder="Slot..." value={colFilters.c4} onChange={v => handleColFilterChange('c4', v)} />
+                        </TableHead>
+                      </>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -772,6 +837,11 @@ export default function ListsReportPage() {
                       c2Val = row.type || '';
                       c3Val = row.slot || '';
                       c4Val = (row.price || 0).toString();
+                    } else if (activeLogType === 'item-report') {
+                      c1Val = row.date || '';
+                      c2Val = row.item || '';
+                      c3Val = row.quantity?.toString() || '0';
+                      c4Val = row.slot || '';
                     }
 
                     return (
