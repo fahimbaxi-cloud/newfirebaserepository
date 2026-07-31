@@ -54,7 +54,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft
 } from 'lucide-react';
-import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter, addDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -239,8 +239,10 @@ export default function ListsReportPage() {
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
+          const orderDate = o.referenceDate ? parseISO(o.referenceDate) : safeParseDate(o.createdAt);
+          const targetDate = o.type === 'Daily' ? addDays(orderDate, 1) : orderDate;
           const items = (o.items || []).map(item => ({
-            date: (o.referenceDate ? safeParseDate(o.referenceDate) : safeParseDate(o.createdAt)).toISOString().split('T')[0],
+            date: targetDate.toISOString().split('T')[0],
             item: item.name,
             quantity: item.quantity,
             slot: o.slot
