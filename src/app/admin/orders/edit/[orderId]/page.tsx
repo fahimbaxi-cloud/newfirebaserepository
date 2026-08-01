@@ -216,8 +216,16 @@ export default function EditOrderPage() {
 
   const sortedDailyPackages = useMemo(() => {
     if (!broadcastPackages) return [];
-    const list = [...broadcastPackages].filter(pkg => pkg.type === 'daily');
+    let list = [...broadcastPackages].filter(pkg => pkg.type === 'daily');
     
+    // Filter by date range: Show all if either date is missing, otherwise filter by overlap
+    if (dailyRangeStartDate && dailyRangeEndDate) {
+      list = list.filter(pkg => {
+        const pDate = getPackageDate(pkg);
+        return pDate >= dailyRangeStartDate && pDate <= dailyRangeEndDate;
+      });
+    }
+
     // Ensure the package currently in the order is always visible
     if (order && order.type === 'Daily') {
       const orderPkg = broadcastPackages.find(p => p.name === order.packageName && p.type === 'daily');
@@ -227,7 +235,17 @@ export default function EditOrderPage() {
     }
     
     return list.sort((a, b) => getPackageDate(b).getTime() - getPackageDate(a).getTime());
-  }, [broadcastPackages, order]);
+  }, [broadcastPackages, order, dailyRangeStartDate, dailyRangeEndDate]);
+
+  const sortedAllPackages = useMemo(() => {
+    return broadcastPackages
+      .filter(pkg => {
+        if (!allStartDate || !allEndDate) return true;
+        const pDate = getPackageDate(pkg);
+        return pDate >= allStartDate && pDate <= allEndDate;
+      })
+      .sort((a, b) => getPackageDate(b).getTime() - getPackageDate(a).getTime());
+  }, [broadcastPackages, allStartDate, allEndDate]);
 
   const sortedSchemePackages = useMemo(() => {
     if (!broadcastPackages) return [];
@@ -383,7 +401,7 @@ export default function EditOrderPage() {
             <CardHeader className="pb-4">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <UserIcon className="w-5 h-5 text-primary" />
-                1. Customer Assignment
+                1. Select Customer
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -422,9 +440,15 @@ export default function EditOrderPage() {
                 </div>
               </ScrollArea>
               {selectedUser && (
-                <div className="p-4 bg-green-50 border-2 border-green-100 rounded-2xl flex items-center gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <p className="text-sm font-black text-green-800">{selectedUser.firstName} {selectedUser.lastName} Selected</p>
+                <div className="p-4 bg-green-50 border-2 border-green-100 rounded-2xl flex items-center justify-between animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    <div>
+                      <p className="text-sm font-black text-green-800">{selectedUser.firstName} {selectedUser.lastName} Selected</p>
+                      <p className="text-[10px] text-green-600/70 font-bold">Orders will be assigned to this profile.</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedUser(null)} className="text-green-800 hover:bg-green-100 h-8 px-2 font-bold">Change</Button>
                 </div>
               )}
             </CardContent>
@@ -434,14 +458,16 @@ export default function EditOrderPage() {
             <CardHeader className="pb-4">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
-                2. Offering & Date
+                2. Select Date & Package
               </CardTitle>
+              <CardDescription className="font-medium">Selecting a date will show packages available for 1 day after (Tomorrow's Specials). This also acts as the "Order Reference Date".</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="w-full">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                    <TabsList className="grid grid-cols-2 w-full sm:w-[320px] bg-secondary/20 p-1 rounded-2xl h-12">
+                    <TabsList className="grid grid-cols-3 w-full sm:w-[480px] bg-secondary/20 p-1 rounded-2xl h-12">
+                      <TabsTrigger value="all" className="rounded-xl font-bold h-10 data-[state=active]:bg-primary data-[state=active]:text-white">All</TabsTrigger>
                       <TabsTrigger value="daily" className="rounded-xl font-bold h-10 data-[state=active]:bg-primary data-[state=active]:text-white">Daily Package</TabsTrigger>
                       <TabsTrigger value="scheme" className="rounded-xl font-bold h-10 data-[state=active]:bg-primary data-[state=active]:text-white">Scheme</TabsTrigger>
                     </TabsList>
@@ -455,34 +481,130 @@ export default function EditOrderPage() {
                     </div>
                   ) : (
                     <>
-                      <TabsContent value="daily" className="space-y-4 outline-none animate-in fade-in duration-300">
-                        {/* Reference Date and Target Delivery Date specifically for Daily Packages */}
-                        <div className="flex flex-col md:flex-row gap-4 mb-6 bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20">
-                          <div className="space-y-2 flex-1">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Reference Date (When Given)</Label>
-                            <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                              <PopoverTrigger asChild>
-                                <Button variant={"outline"} className={cn("w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm", !selectedDate && "text-muted-foreground")}>
-                                  <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                                  {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
-                                <Calendar mode="single" selected={selectedDate} onSelect={(date) => {
-                                  setSelectedDate(date);
-                                  setIsDatePickerOpen(false);
-                                }} initialFocus className="rounded-3xl" />
-                              </PopoverContent>
-                            </Popover>
+                      <TabsContent value="all" className="space-y-4 outline-none animate-in fade-in duration-300">
+                        <div className="bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20 mb-6">
+                            <div className="space-y-4">
+                              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Date Range Filter</Label>
+                              <div className="flex flex-col sm:flex-row gap-4 items-center">
+                                <Popover open={isAllStartPopoverOpen} onOpenChange={setIsAllStartPopoverOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                      {allStartDate ? format(allStartDate, "PPP") : <span>Start Date</span>}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                    <Calendar mode="single" selected={allStartDate} onSelect={(date) => { setAllStartDate(date); setIsAllStartPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                  </PopoverContent>
+                                </Popover>
+                                <Popover open={isAllEndPopoverOpen} onOpenChange={setIsAllEndPopoverOpen}>
+                                  <PopoverTrigger asChild>
+                                    <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                      <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                      {allEndDate ? format(allEndDate, "PPP") : <span>End Date</span>}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                    <Calendar mode="single" selected={allEndDate} onSelect={(date) => { setAllEndDate(date); setIsAllEndPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                  </PopoverContent>
+                                </Popover>
+                                {(allStartDate || allEndDate) && (
+                                  <Button variant="ghost" onClick={() => { setAllStartDate(undefined); setAllEndDate(undefined); }} className="text-xs font-bold text-destructive hover:text-destructive/80">Clear</Button>
+                                )}
+                              </div>
+                            </div>
+                        </div>
+                        {sortedAllPackages.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {sortedAllPackages.map((pkg) => (
+                                <div 
+                                  key={pkg.id} 
+                                  className={cn(
+                                    "p-5 border-2 rounded-[2rem] transition-all flex flex-col justify-between h-full group relative overflow-hidden",
+                                    selectedPackages[pkg.id] > 0 
+                                      ? "border-primary bg-primary/5 shadow-md" 
+                                      : "border-secondary/30 bg-white hover:border-primary/20"
+                                  )}
+                                >
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-[10px] font-bold text-muted-foreground bg-secondary/40 px-2 py-0.5 rounded">
+                                        {pkg.dateContext || pkg.type}
+                                      </span>
+                                      <span className="font-black text-primary text-xl">Rs {pkg.price}</span>
+                                    </div>
+                                    <p className="font-black text-sm text-accent leading-tight line-clamp-2 pr-10">{pkg.name}</p>
+                                    <p className="text-[10px] text-muted-foreground italic font-medium">"{pkg.message}"</p>
+                                  </div>
+                                  <div className="mt-4 flex items-center justify-between bg-secondary/20 p-2 rounded-2xl">
+                                    <span className="text-xs font-bold px-2">Add to Order</span>
+                                    <div className="flex items-center gap-3">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-9 w-9 rounded-xl bg-white shadow-sm hover:text-destructive animate-none" 
+                                        onClick={() => updatePackageQuantity(pkg.id, -1)}
+                                      >
+                                        <Minus className="w-4 h-4" />
+                                      </Button>
+                                      <span className="font-black text-lg w-4 text-center">{selectedPackages[pkg.id] || 0}</span>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-9 w-9 rounded-xl bg-primary text-white hover:bg-primary/90 hover:text-white shadow-md animate-none" 
+                                        onClick={() => updatePackageQuantity(pkg.id, 1)}
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                            ))}
                           </div>
-                          <div className="space-y-2 flex-1">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Target Delivery Date</Label>
-                            <div className="h-12 bg-green-50/50 border border-green-200 rounded-xl flex items-center px-4 gap-2 text-green-700 font-bold shadow-sm">
-                              <Sparkles className="w-4 h-4 text-green-500" />
-                              <span>{targetDailyDateStr}</span>
+                        ) : (
+                          <div className="p-10 border-2 border-dashed border-secondary/50 rounded-[2rem] flex flex-col items-center justify-center text-center space-y-3 bg-secondary/5 opacity-60">
+                            <div className="p-4 bg-white rounded-full">
+                              <Info className="w-8 h-8 text-muted-foreground/30" />
+                            </div>
+                            <p className="text-sm font-bold text-muted-foreground max-w-[250px]">No packages found in Firestore.</p>
+                          </div>
+                        )}
+                      </TabsContent>
+                      <TabsContent value="daily" className="space-y-4 outline-none animate-in fade-in duration-300">
+                        {/* Date Range Filter for Daily Packages */}
+                        <div className="bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20 mb-6">
+                          <div className="space-y-4">
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Date Range Filter</Label>
+                            <div className="flex flex-col sm:flex-row gap-4 items-center">
+                              <Popover open={isDailyStartPopoverOpen} onOpenChange={setIsDailyStartPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                    {dailyRangeStartDate ? format(dailyRangeStartDate, "PPP") : <span>Start Date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                  <Calendar mode="single" selected={dailyRangeStartDate} onSelect={(date) => { setDailyRangeStartDate(date); setIsDailyStartPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                </PopoverContent>
+                              </Popover>
+                              <Popover open={isDailyEndPopoverOpen} onOpenChange={setIsDailyEndPopoverOpen}>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                                    <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                                    {dailyRangeEndDate ? format(dailyRangeEndDate, "PPP") : <span>End Date</span>}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                                  <Calendar mode="single" selected={dailyRangeEndDate} onSelect={(date) => { setDailyRangeEndDate(date); setIsDailyEndPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                                </PopoverContent>
+                              </Popover>
+                              {(dailyRangeStartDate || dailyRangeEndDate) && (
+                                <Button variant="ghost" onClick={() => { setDailyRangeStartDate(undefined); setDailyRangeEndDate(undefined); }} className="text-xs font-bold text-destructive hover:text-destructive/80">Clear</Button>
+                              )}
                             </div>
                           </div>
                         </div>
+
                         {sortedDailyPackages.length > 0 ? (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {sortedDailyPackages.map((pkg) => {
@@ -661,7 +783,7 @@ export default function EditOrderPage() {
             <CardHeader className="bg-accent text-white p-7">
               <CardTitle className="flex items-center gap-2">
                 <ShoppingCart className="w-6 h-6" />
-                Update Order
+                Order Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="p-7 space-y-6">
@@ -701,6 +823,14 @@ export default function EditOrderPage() {
                                       <Calendar mode="single" selected={getDailyConfig(pkg!.id).referenceDate} onSelect={(date) => { if(date) updateDailyConfig(pkg!.id, { referenceDate: date }); setOpenPopovers(prev => ({ ...prev, [`ref-${pkg!.id}`]: false })); }} initialFocus className="rounded-3xl" />
                                     </PopoverContent>
                                   </Popover>
+                                </div>
+                                {/* Target Delivery Date Display */}
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black uppercase text-muted-foreground block">Target Delivery Date</label>
+                                  <div className="h-9 bg-white border border-secondary/30 rounded-xl flex items-center px-3 gap-2 text-green-700 text-xs font-bold shadow-sm">
+                                    <Check className="w-3.5 h-3.5 text-green-500" />
+                                    <span>{format(addDays(getDailyConfig(pkg!.id).referenceDate, 1), "PPP")}</span>
+                                  </div>
                                 </div>
                                 {/* Slot and Time */}
                                 <div className="grid grid-cols-2 gap-2">
