@@ -844,16 +844,20 @@ export default function EditOrderPage() {
                                   <div className="space-y-1">
                                     <label className="text-[9px] font-black uppercase text-muted-foreground block">Time</label>
                                     <div className="flex gap-1">
-                                      <Select value={getDailyConfig(pkg!.id).timeValue} onValueChange={(v) => updateDailyConfig(pkg!.id, { timeValue: v })}>
-                                        <SelectTrigger className="h-9 rounded-xl bg-white border-secondary/30 font-bold text-xs"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                          {getDailyConfig(pkg!.id).slot === 'Morning' ? 
-                                            ["08:30", "09:00", "09:30", "10:00"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>) : 
-                                            ["12:30", "01:00", "01:30", "02:00"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)
-                                          }
+                                      <Input 
+                                        value={getDailyConfig(pkg!.id).timeValue} 
+                                        onChange={(e) => updateDailyConfig(pkg!.id, { timeValue: e.target.value })} 
+                                        className="h-9 rounded-xl bg-white border-secondary/30 font-bold text-xs px-2"
+                                      />
+                                      <Select value={getDailyConfig(pkg!.id).timePeriod} onValueChange={(v) => updateDailyConfig(pkg!.id, { timePeriod: v })}>
+                                        <SelectTrigger className="w-14 h-9 rounded-xl border-secondary/30 font-bold bg-white text-[10px] px-1">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                          <SelectItem value="AM">AM</SelectItem>
+                                          <SelectItem value="PM">PM</SelectItem>
                                         </SelectContent>
                                       </Select>
-                                      <Input value={getDailyConfig(pkg!.id).timePeriod} readOnly className="w-12 h-9 rounded-xl bg-secondary/20 border-none font-black text-center text-xs" />
                                     </div>
                                   </div>
                                 </div>
@@ -872,39 +876,19 @@ export default function EditOrderPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Slot</Label>
-                    <Select value={timeSlot} onValueChange={(v) => setTimeSlot(v as TimeSlot)}>
-                      <SelectTrigger className="rounded-xl h-11 bg-secondary/10 border-none font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl"><SelectItem value="Morning">Morning</SelectItem><SelectItem value="Noon">Noon</SelectItem></SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase">Status</Label>
-                    <Select value={orderStatus} onValueChange={(v) => setOrderStatus(v as OrderStatus)}>
-                      <SelectTrigger className="rounded-xl h-11 bg-secondary/10 border-none font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Assigned">Assigned</SelectItem>
-                        <SelectItem value="Picked Up">Picked Up</SelectItem>
-                        <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
-                        <SelectItem value="Delivered">Delivered</SelectItem>
-                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase">Preferred Time</Label>
-                  <div className="flex gap-2">
-                    <Input value={timeValue} onChange={(e) => setTimeValue(e.target.value)} className="rounded-xl h-11 bg-secondary/10 border-none font-bold flex-1" />
-                    <Select value={timePeriod} onValueChange={setTimePeriod}>
-                      <SelectTrigger className="w-20 h-11 rounded-xl bg-secondary/10 border-none font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl"><SelectItem value="AM">AM</SelectItem><SelectItem value="PM">PM</SelectItem></SelectContent>
-                    </Select>
-                  </div>
+                  <Label className="text-[10px] font-black uppercase">Status</Label>
+                  <Select value={orderStatus} onValueChange={(v) => setOrderStatus(v as OrderStatus)}>
+                    <SelectTrigger className="rounded-xl h-11 bg-secondary/10 border-none font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Assigned">Assigned</SelectItem>
+                      <SelectItem value="Picked Up">Picked Up</SelectItem>
+                      <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                      <SelectItem value="Delivered">Delivered</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
