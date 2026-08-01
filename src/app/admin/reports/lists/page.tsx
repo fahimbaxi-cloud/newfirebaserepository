@@ -54,7 +54,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft
 } from 'lucide-react';
-import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter, addDays } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, isBefore, isAfter } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection } from 'firebase/firestore';
@@ -239,10 +239,8 @@ export default function ListsReportPage() {
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
-          const orderDate = o.referenceDate ? parseISO(o.referenceDate) : safeParseDate(o.createdAt);
-          const targetDate = o.type === 'Daily' ? addDays(orderDate, 1) : orderDate;
           const items = (o.items || []).map(item => ({
-            date: targetDate.toISOString().split('T')[0],
+            date: safeParseDate(o.referenceDate || o.createdAt).toISOString().split('T')[0],
             item: item.name,
             quantity: item.quantity,
             slot: o.slot
@@ -429,10 +427,10 @@ export default function ListsReportPage() {
       filtered.sort((a, b) => {
         let valA: any = '', valB: any = '';
         const keyMap: Record<string, string> = { 
-          c1: activeLogType === 'order-summary' ? 'createdAt' : activeLogType === 'trial-balance' ? 'name' : activeLogType === 'journal' ? 'date' : activeLogType === 'items' ? 'name' : activeLogType === 'packages' ? 'name' : activeLogType === 'orders' ? 'id' : activeLogType === 'suppliers' ? 'name' : activeLogType === 'customers' ? 'firstName' : activeLogType === 'delivery' ? 'firstName' : activeLogType === 'mfg-logs' ? 'date' : 'date',
-          c2: activeLogType === 'order-summary' ? 'customerName' : activeLogType === 'trial-balance' ? 'debit' : activeLogType === 'journal' ? 'debitAccountName' : activeLogType === 'items' ? 'category' : activeLogType === 'packages' ? 'type' : activeLogType === 'orders' ? 'customerName' : activeLogType === 'suppliers' ? 'contactPerson' : activeLogType === 'customers' ? 'bacchabiteId' : activeLogType === 'delivery' ? 'bacchabiteId' : activeLogType === 'mfg-logs' ? 'packageName' : 'type',
-          c3: activeLogType === 'order-summary' ? 'packageName' : activeLogType === 'trial-balance' ? 'credit' : activeLogType === 'journal' ? 'creditAccountName' : activeLogType === 'items' ? 'unit' : activeLogType === 'packages' ? 'dateContext' : activeLogType === 'orders' ? 'slot' : activeLogType === 'suppliers' ? 'phone' : activeLogType === 'customers' ? 'mobileNumber' : activeLogType === 'delivery' ? 'mobileNumber' : activeLogType === 'mfg-logs' ? 'quantity' : 'categoryName',
-          c4: activeLogType === 'order-summary' ? 'packageQuantity' : activeLogType === 'journal' ? 'amount' : activeLogType === 'items' ? 'currentStock' : activeLogType === 'packages' ? 'price' : activeLogType === 'orders' ? 'total' : activeLogType === 'suppliers' ? 'email' : activeLogType === 'customers' ? 'email' : activeLogType === 'delivery' ? 'email' : activeLogType === 'mfg-logs' ? 'ingredientsUsed' : 'amount',
+          c1: activeLogType === 'order-summary' ? 'createdAt' : activeLogType === 'trial-balance' ? 'name' : activeLogType === 'journal' ? 'date' : activeLogType === 'items' ? 'name' : activeLogType === 'packages' ? 'name' : activeLogType === 'orders' ? 'id' : activeLogType === 'suppliers' ? 'name' : activeLogType === 'customers' ? 'firstName' : activeLogType === 'delivery' ? 'firstName' : activeLogType === 'mfg-logs' ? 'date' : activeLogType === 'item-report' ? 'date' : 'date',
+          c2: activeLogType === 'order-summary' ? 'customerName' : activeLogType === 'trial-balance' ? 'debit' : activeLogType === 'journal' ? 'debitAccountName' : activeLogType === 'items' ? 'category' : activeLogType === 'packages' ? 'type' : activeLogType === 'orders' ? 'customerName' : activeLogType === 'suppliers' ? 'contactPerson' : activeLogType === 'customers' ? 'bacchabiteId' : activeLogType === 'delivery' ? 'bacchabiteId' : activeLogType === 'mfg-logs' ? 'packageName' : activeLogType === 'item-report' ? 'item' : 'type',
+          c3: activeLogType === 'order-summary' ? 'packageName' : activeLogType === 'trial-balance' ? 'credit' : activeLogType === 'journal' ? 'creditAccountName' : activeLogType === 'items' ? 'unit' : activeLogType === 'packages' ? 'dateContext' : activeLogType === 'orders' ? 'slot' : activeLogType === 'suppliers' ? 'phone' : activeLogType === 'customers' ? 'mobileNumber' : activeLogType === 'delivery' ? 'mobileNumber' : activeLogType === 'mfg-logs' ? 'quantity' : activeLogType === 'item-report' ? 'quantity' : 'categoryName',
+          c4: activeLogType === 'order-summary' ? 'packageQuantity' : activeLogType === 'journal' ? 'amount' : activeLogType === 'items' ? 'currentStock' : activeLogType === 'packages' ? 'price' : activeLogType === 'orders' ? 'total' : activeLogType === 'suppliers' ? 'email' : activeLogType === 'customers' ? 'email' : activeLogType === 'delivery' ? 'email' : activeLogType === 'mfg-logs' ? 'ingredientsUsed' : activeLogType === 'item-report' ? 'slot' : 'amount',
           c5: activeLogType === 'order-summary' ? 'type' : activeLogType === 'journal' ? 'notes' : '',
           c6: activeLogType === 'order-summary' ? 'status' : ''
         };
