@@ -336,7 +336,7 @@ export default function EditOrderPage() {
 
     if (pkg!.type === 'daily') {
       const config = getDailyConfig(pkg!.id);
-      calculatedRefDate = config.referenceDate.toISOString();
+      calculatedRefDate = format(config.referenceDate, 'yyyy-MM-dd');
       calculatedTargetDeliveryDate = format(addDays(config.referenceDate, 1), "MMMM d, yyyy");
       calculatedSlot = config.slot;
       calculatedDeliveryTime = `${config.timeValue} ${config.timePeriod}`;
