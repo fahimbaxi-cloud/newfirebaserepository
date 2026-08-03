@@ -416,6 +416,7 @@ export default function ListsReportPage() {
         c2Val = r.item || '';
         c3Val = r.quantity?.toString() || '0';
         c4Val = r.slot || '';
+        c5Val = r.riderName || 'Unassigned';
       }
 
       const matchCol1 = !colFilters.c1 || c1Val.toLowerCase().includes(colFilters.c1.toLowerCase());
@@ -436,7 +437,7 @@ export default function ListsReportPage() {
           c2: activeLogType === 'order-summary' ? 'customerName' : activeLogType === 'trial-balance' ? 'debit' : activeLogType === 'journal' ? 'debitAccountName' : activeLogType === 'items' ? 'category' : activeLogType === 'packages' ? 'type' : activeLogType === 'orders' ? 'customerName' : activeLogType === 'suppliers' ? 'contactPerson' : activeLogType === 'customers' ? 'bacchabiteId' : activeLogType === 'delivery' ? 'bacchabiteId' : activeLogType === 'mfg-logs' ? 'packageName' : activeLogType === 'item-report' ? 'item' : 'type',
           c3: activeLogType === 'order-summary' ? 'packageName' : activeLogType === 'trial-balance' ? 'credit' : activeLogType === 'journal' ? 'creditAccountName' : activeLogType === 'items' ? 'unit' : activeLogType === 'packages' ? 'dateContext' : activeLogType === 'orders' ? 'slot' : activeLogType === 'suppliers' ? 'phone' : activeLogType === 'customers' ? 'mobileNumber' : activeLogType === 'delivery' ? 'mobileNumber' : activeLogType === 'mfg-logs' ? 'quantity' : activeLogType === 'item-report' ? 'quantity' : 'categoryName',
           c4: activeLogType === 'order-summary' ? 'packageQuantity' : activeLogType === 'journal' ? 'amount' : activeLogType === 'items' ? 'currentStock' : activeLogType === 'packages' ? 'price' : activeLogType === 'orders' ? 'total' : activeLogType === 'suppliers' ? 'email' : activeLogType === 'customers' ? 'email' : activeLogType === 'delivery' ? 'email' : activeLogType === 'mfg-logs' ? 'ingredientsUsed' : activeLogType === 'item-report' ? 'slot' : 'amount',
-          c5: activeLogType === 'order-summary' ? 'type' : activeLogType === 'journal' ? 'notes' : '',
+          c5: activeLogType === 'order-summary' ? 'type' : activeLogType === 'journal' ? 'notes' : activeLogType === 'item-report' ? 'riderName' : '',
           c6: activeLogType === 'order-summary' ? 'status' : ''
         };
         valA = a[keyMap[sortConfig.key] || sortConfig.key]; 
