@@ -239,8 +239,8 @@ export default function ListsReportPage() {
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
-          const rider = users.find(u => u.id === o.riderId);
-          const riderName = o.riderId ? (rider ? `${rider.firstName} ${rider.lastName}` : "Unknown") : "Unassigned";
+          const rider = users.find(u => u.id === o.assignedTo);
+          const riderName = o.assignedTo ? (rider ? `${rider.firstName} ${rider.lastName}` : "Unknown") : "Unassigned";
 
           const items = (o.items || []).map(item => ({
             date: format((o.referenceDate ? parseISO(o.referenceDate) : safeParseDate(o.createdAt)), 'yyyy-MM-dd'),
