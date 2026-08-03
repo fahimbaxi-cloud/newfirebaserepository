@@ -239,18 +239,23 @@ export default function ListsReportPage() {
       case 'mfg-logs': data = mfgLogs; break;
       case 'item-report':
         const flatData = [...orders, ...schemeOrders].flatMap(o => {
+          const rider = users.find(u => u.id === o.riderId);
+          const riderName = o.riderId ? (rider ? `${rider.firstName} ${rider.lastName}` : "Unknown") : "Unassigned";
+
           const items = (o.items || []).map(item => ({
             date: format((o.referenceDate ? parseISO(o.referenceDate) : safeParseDate(o.createdAt)), 'yyyy-MM-dd'),
             item: item.name,
             quantity: item.quantity,
-            slot: o.slot
+            slot: o.slot,
+            riderName
           }));
           const overrides = Object.entries(o.dailyItemsOverride || {}).flatMap(([date, items]) => 
             (items as any[]).map(item => ({
               date: date,
               item: item.name,
               quantity: item.quantity,
-              slot: o.dailySlotOverride?.[date] || o.slot
+              slot: o.dailySlotOverride?.[date] || o.slot,
+              riderName
             }))
           );
           return [...items, ...overrides];
@@ -788,9 +793,13 @@ export default function ListsReportPage() {
                           <SortTrigger label="Qty" sortKey="c3" />
                           <FilterInput placeholder="Qty..." value={colFilters.c3} onChange={v => handleColFilterChange('c3', v)} />
                         </TableHead>
-                        <TableHead className="pr-8 text-right">
-                          <SortTrigger label="Slot" sortKey="c4" className="justify-end" />
+                        <TableHead>
+                          <SortTrigger label="Slot" sortKey="c4" />
                           <FilterInput placeholder="Slot..." value={colFilters.c4} onChange={v => handleColFilterChange('c4', v)} />
+                        </TableHead>
+                        <TableHead className="pr-8 text-right">
+                          <SortTrigger label="Rider" sortKey="c5" className="justify-end" />
+                          <FilterInput placeholder="Rider..." value={colFilters.c5} onChange={v => handleColFilterChange('c5', v)} />
                         </TableHead>
                       </>
                     )}
@@ -867,6 +876,7 @@ export default function ListsReportPage() {
                       c2Val = row.item || '';
                       c3Val = row.quantity?.toString() || '0';
                       c4Val = row.slot || '';
+                      c5Val = row.riderName || 'Unassigned';
                     }
 
                     return (
@@ -877,6 +887,7 @@ export default function ListsReportPage() {
                         <TableCell>{c2Val}</TableCell>
                         <TableCell>{c3Val}</TableCell>
                         <TableCell className={cn("text-right font-black text-primary", activeLogType === 'order-summary' ? "text-center" : "pr-8")}>{c4Val}</TableCell>
+                        {activeLogType === 'item-report' && <TableCell>{c5Val}</TableCell>}
                         {activeLogType === 'order-summary' && (
                           <>
                             <TableCell>{c5Val}</TableCell>
