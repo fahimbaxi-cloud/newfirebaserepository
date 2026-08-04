@@ -129,7 +129,7 @@ export default function NewOfflineOrderPage() {
   const customers = useMemo(() => {
     return allUsers.filter(u => 
       u.role === 'customer' && 
-      (`${u.firstName} ${u.lastName} ${u.bacchabiteId}`).toLowerCase().includes(customerSearch.toLowerCase())
+      (`${u.firstName} ${u.lastName} ${u.bacchabiteId} ${u.mobileNumber} ${u.address}`).toLowerCase().includes(customerSearch.toLowerCase())
     );
   }, [allUsers, customerSearch]);
 
