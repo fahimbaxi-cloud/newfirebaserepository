@@ -179,7 +179,7 @@ export default function AdminDashboard() {
   const filteredOrders = useMemo(() => {
     const safeOrders = orders || [];
     const data = safeOrders.filter(order => {
-      const orderDate = parseDateSafe(order.createdAt);
+      const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
       
       if (filterDate && !isSameDay(orderDate, filterDate)) {
         return false;
