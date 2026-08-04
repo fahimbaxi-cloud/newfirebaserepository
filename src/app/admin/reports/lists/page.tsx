@@ -462,10 +462,16 @@ export default function ListsReportPage() {
   }, [activeLogType, logTableData]);
 
   const handleExportPDF = () => {
-    const title = `Master List: ${activeLogType?.toUpperCase()}`;
-    const head = [['ID', 'Name', 'Detail']];
-    const body = logTableData.map(r => [r.id?.substr(0,8) || '-', r.name || `${r.firstName} ${r.lastName}`, r.category || r.status || '-']);
-    downloadPDF(title, head, body, "master_list");
+    const title = `Report: ${activeLogType?.toUpperCase()}`;
+    let head = [['ID', 'Name', 'Detail']];
+    let body = logTableData.map(r => [r.id?.substr(0,8) || '-', r.name || `${r.firstName} ${r.lastName}`, r.category || r.status || '-']);
+
+    if (activeLogType === 'item-report') {
+      head = [['Date', 'Item', 'Qty', 'Slot', 'Rider']];
+      body = logTableData.map(r => [r.date || '-', r.item || '-', r.quantity?.toString() || '0', r.slot || '-', r.riderName || 'Unassigned']);
+    }
+    
+    downloadPDF(title, head, body, `report_${activeLogType}`);
   };
 
   const handleLogClick = (type: LogType) => {
