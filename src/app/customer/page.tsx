@@ -36,6 +36,17 @@ export default function CustomerHome() {
   const [timeSlot, setTimeSlot] = useState<TimeSlot>('Morning');
   
   const [activeTab, setActiveTab] = useState('all');
+  
+  const [allStartDate, setAllStartDate] = useState<Date | undefined>(undefined);
+  const [allEndDate, setAllEndDate] = useState<Date | undefined>(undefined);
+  const [isAllStartPopoverOpen, setIsAllStartPopoverOpen] = useState(false);
+  const [isAllEndPopoverOpen, setIsAllEndPopoverOpen] = useState(false);
+
+  const [dailyStartDate, setDailyStartDate] = useState<Date | undefined>(undefined);
+  const [dailyEndDate, setDailyEndDate] = useState<Date | undefined>(undefined);
+  const [isDailyStartPopoverOpen, setIsDailyStartPopoverOpen] = useState(false);
+  const [isDailyEndPopoverOpen, setIsDailyEndPopoverOpen] = useState(false);
+
   const [schemeStartDate, setSchemeStartDate] = useState<Date | undefined>(undefined);
   const [schemeEndDate, setSchemeEndDate] = useState<Date | undefined>(undefined);
   const [isStartPopoverOpen, setIsStartPopoverOpen] = useState(false);
@@ -163,11 +174,15 @@ export default function CustomerHome() {
   };
 
   const filteredDailyPackages = useMemo(() => {
-    if (!dailyDate || !isValid(dailyDate) || !allPackages) return [];
-    const targetDate = addDays(dailyDate, 1);
-    const dateStr = format(targetDate, 'MMMM d, yyyy');
-    return allPackages.filter(p => p.type === 'daily' && p.dateContext === dateStr);
-  }, [dailyDate, allPackages]);
+    if (!allPackages) return [];
+    if (!dailyStartDate || !dailyEndDate) return allPackages.filter(p => p.type === 'daily');
+    
+    return allPackages.filter(p => {
+      if (p.type !== 'daily') return false;
+      const pDate = parse(p.dateContext, 'MMMM d, yyyy', new Date());
+      return pDate >= dailyStartDate && pDate <= dailyEndDate;
+    });
+  }, [dailyStartDate, dailyEndDate, allPackages]);
 
   const filteredSchemePackages = useMemo(() => {
     if (!allPackages) return [];
@@ -188,8 +203,21 @@ export default function CustomerHome() {
 
   const filteredAllPackages = useMemo(() => {
     if (!allPackages) return [];
-    return allPackages;
-  }, [allPackages]);
+    if (!allStartDate || !allEndDate) return allPackages;
+    
+    return allPackages.filter(pkg => {
+      if (pkg.type === 'daily') {
+        const pDate = parse(pkg.dateContext, 'MMMM d, yyyy', new Date());
+        return pDate >= allStartDate && pDate <= allEndDate;
+      } else if (pkg.type === 'scheme' || pkg.type === 'monthly') {
+        if (!pkg.startDate || !pkg.endDate) return false;
+        const pStart = new Date(pkg.startDate);
+        const pEnd = new Date(pkg.endDate);
+        return pStart <= allEndDate && pEnd >= allStartDate;
+      }
+      return true;
+    });
+  }, [allPackages, allStartDate, allEndDate]);
 
   const upcomingOrder = useMemo(() => {
     if (!currentUser || !allOrders) return null;
@@ -386,12 +414,12 @@ export default function CustomerHome() {
   }, [allPackages]);
 
   const tomorrowSpecialName = useMemo(() => {
-    if (!dailyDate || !allPackages) return "Nutri-Balanced Meal";
-    const tomorrow = addDays(dailyDate, 1);
+    if (!allPackages) return "Nutri-Balanced Meal";
+    const tomorrow = addDays(new Date(), 1);
     const dateStr = format(tomorrow, 'MMMM d, yyyy');
     const pkg = allPackages.find(p => p.type === 'daily' && p.dateContext === dateStr);
     return pkg?.name || "Nutri-Balanced Meal";
-  }, [dailyDate, allPackages]);
+  }, [allPackages]);
 
   if (!isAuthorized || !currentUser) {
     return (
@@ -595,7 +623,45 @@ export default function CustomerHome() {
                {/* Include all sections here for 'all' tab? Or just show filtered? */}
                {/* Actually the request says "tabs for all, daily and scheme". I'll put appropriate content in each tab. */}
                {/* Maybe just render everything in "All"? Or just show a list? The user said "keep listing". */}
-               <PackageGrid packages={filteredAllPackages} onOrder={handleOrderClick} orderedIds={orderedPackageIds} pastIds={pastPackageIds} menuItems={menu} />
+                  <div className="bg-secondary/10 p-5 rounded-[1.5rem] border border-secondary/20 mb-6">
+                    <div className="space-y-4">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Select All Date Range</Label>
+                      <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <Popover open={isAllStartPopoverOpen} onOpenChange={setIsAllStartPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                              <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                              {allStartDate ? format(allStartDate, "PPP") : <span>Start Date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                            <Calendar mode="single" selected={allStartDate} onSelect={(date) => { setAllStartDate(date); setIsAllStartPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                          </PopoverContent>
+                        </Popover>
+                        <Popover open={isAllEndPopoverOpen} onOpenChange={setIsAllEndPopoverOpen}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                              <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                              {allEndDate ? format(allEndDate, "PPP") : <span>End Date</span>}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                            <Calendar mode="single" selected={allEndDate} onSelect={(date) => { setAllEndDate(date); setIsAllEndPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                          </PopoverContent>
+                        </Popover>
+                        {(allStartDate || allEndDate) && (
+                          <Button 
+                            variant="ghost" 
+                            onClick={() => { setAllStartDate(undefined); setAllEndDate(undefined); }}
+                            className="text-xs font-bold text-destructive hover:text-destructive/80"
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <PackageGrid packages={filteredAllPackages} onOrder={handleOrderClick} orderedIds={orderedPackageIds} pastIds={pastPackageIds} menuItems={menu} />
             </TabsContent>
 
             <TabsContent value="daily" className="space-y-12 outline-none animate-in fade-in duration-300">
@@ -607,35 +673,40 @@ export default function CustomerHome() {
                   </div>
                   
                   <div className="flex flex-col gap-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Selection (Showing Next Day Menu)</Label>
-                    <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full md:w-[240px] h-12 justify-start text-left font-bold rounded-2xl bg-white border-none shadow-sm px-4",
-                            !dailyDate && "text-muted-foreground"
-                          )}
+                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Select Daily Date Range</Label>
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                      <Popover open={isDailyStartPopoverOpen} onOpenChange={setIsDailyStartPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                            <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                            {dailyStartDate ? format(dailyStartDate, "PPP") : <span>Start Date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                          <Calendar mode="single" selected={dailyStartDate} onSelect={(date) => { setDailyStartDate(date); setIsDailyStartPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                        </PopoverContent>
+                      </Popover>
+                      <Popover open={isDailyEndPopoverOpen} onOpenChange={setIsDailyEndPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-white border-none px-4 shadow-sm">
+                            <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                            {dailyEndDate ? format(dailyEndDate, "PPP") : <span>End Date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="start">
+                          <Calendar mode="single" selected={dailyEndDate} onSelect={(date) => { setDailyEndDate(date); setIsDailyEndPopoverOpen(false); }} initialFocus className="rounded-3xl" />
+                        </PopoverContent>
+                      </Popover>
+                      {(dailyStartDate || dailyEndDate) && (
+                        <Button 
+                          variant="ghost" 
+                          onClick={() => { setDailyStartDate(undefined); setDailyEndDate(undefined); }}
+                          className="text-xs font-bold text-destructive hover:text-destructive/80"
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
-                          {dailyDate ? format(dailyDate, "PPP") : <span>Pick a date</span>}
+                          Clear
                         </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-3xl border-none shadow-2xl" align="end">
-                        <Calendar
-                          mode="single"
-                          selected={dailyDate}
-                          onSelect={(date) => {
-                            if (date) {
-                              setDailyDate(date);
-                              setIsDatePickerOpen(false);
-                            }
-                          }}
-                          initialFocus
-                          className="rounded-3xl"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                      )}
+                    </div>
                   </div>
                 </div>
 
