@@ -5,6 +5,7 @@
 export { 
   useFirebase, 
   useFirestore, 
+  useRTDB,
   useAuth, 
   useFirebaseApp, 
   useMemoFirebase, 

@@ -42,6 +42,7 @@ import { format, isSameDay, parseISO, addDays, differenceInDays, startOfDay } fr
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
+import { useRiderLocation } from '@/hooks/use-rider-location';
 
 const StatusRadio = ({ active, onClick, activeColor, isHeader = false }: { active: boolean, onClick: () => void, activeColor: string, isHeader?: boolean }) => (
   <div 
@@ -112,6 +113,7 @@ export default function DeliveryDashboard() {
   });
 
   const { toast } = useToast();
+  const { isSharing, status, lastUpdated, startSharing, stopSharing } = useRiderLocation();
 
   const ordersQuery = useMemoFirebase(() => collection(firestore, 'orders'), [firestore]);
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
@@ -480,6 +482,26 @@ export default function DeliveryDashboard() {
               <p className="text-muted-foreground">Managing your assigned delivery registry from Cloud Firestore.</p>
             </div>
             <div className="flex items-center gap-2 print:hidden">
+              <div className="flex items-center gap-2 bg-white rounded-full p-1 border border-blue-100">
+                <Button 
+                  variant={isSharing ? "destructive" : "default"} 
+                  size="sm" 
+                  onClick={isSharing ? stopSharing : startSharing}
+                  className="rounded-full h-8 px-4 font-bold text-[10px]"
+                >
+                  {isSharing ? "Stop Sharing" : "Start Sharing"}
+                </Button>
+                <span className={cn("text-[10px] font-bold px-2", 
+                  status === 'on' ? "text-green-600" : 
+                  status === 'denied' ? "text-red-600" : 
+                  status === 'unavailable' ? "text-red-600" :
+                  "text-slate-400")}>
+                  {status === 'on' ? "ON" : 
+                   status === 'denied' ? "Denied" :
+                   status === 'unavailable' ? "N/A" :
+                   "OFF"}
+                </span>
+              </div>
               {(Object.values(colFilters).some(v => v !== '') || Object.values(activeFilters).some(v => v) || selectedDate) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-full h-8 px-3 text-blue-600 hover:bg-blue-100 font-bold text-[10px] uppercase tracking-wider">
                   <FilterX className="w-3.5 h-3.5 mr-1.5" /> Clear Filters
