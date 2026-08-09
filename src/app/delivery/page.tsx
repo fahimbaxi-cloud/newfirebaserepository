@@ -40,9 +40,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, parseISO, addDays, differenceInDays, startOfDay } from 'date-fns';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, doc, query, where, getDocs, limit, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
-import { useRiderLocation } from '@/hooks/use-rider-location';
 
 const StatusRadio = ({ active, onClick, activeColor, isHeader = false }: { active: boolean, onClick: () => void, activeColor: string, isHeader?: boolean }) => (
   <div 
@@ -82,6 +81,55 @@ const getOrderDateStatus = (order: Order, date: Date) => {
 export default function DeliveryDashboard() {
   const router = useRouter();
   const firestore = useFirestore();
+  const [isSharing, setIsSharing] = useState(false);
+  const [watchId, setWatchId] = useState<number | null>(null);
+
+  const startSharing = async () => {
+    if (!currentUser) return;
+    
+    if (navigator.geolocation) {
+        const id = navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude, accuracy, speed, heading } = position.coords;
+                const riderRef = doc(firestore, 'riderLocations', currentUser.id);
+                setDoc(riderRef, {
+                    riderUid: currentUser.id,
+                    latitude,
+                    longitude,
+                    accuracy,
+                    speed,
+                    heading,
+                    timestamp: position.timestamp,
+                    sharing: true,
+                    lastUpdated: new Date().toISOString()
+                }, { merge: true });
+            },
+            (error) => {
+                console.error("Error watching location:", error);
+                toast({ title: "Location Error", description: error.message });
+            },
+            { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+        setWatchId(id);
+        setIsSharing(true);
+        toast({ title: "Sharing Started", description: "Your location is being shared with admin." });
+    } else {
+        toast({ title: "Geolocation not supported", description: "Your browser does not support geolocation." });
+    }
+  };
+
+  const stopSharing = async () => {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    setWatchId(null);
+    setIsSharing(false);
+    
+    if (currentUser) {
+        const riderRef = doc(firestore, 'riderLocations', currentUser.id);
+        updateDoc(riderRef, { sharing: false, lastUpdated: new Date().toISOString() });
+        toast({ title: "Sharing Stopped", description: "Your location is no longer being shared." });
+    }
+  };
+
   const [mounted, setMounted] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -113,7 +161,6 @@ export default function DeliveryDashboard() {
   });
 
   const { toast } = useToast();
-  const { isSharing, status, lastUpdated, startSharing, stopSharing } = useRiderLocation();
 
   const ordersQuery = useMemoFirebase(() => collection(firestore, 'orders'), [firestore]);
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
@@ -481,27 +528,15 @@ export default function DeliveryDashboard() {
               <h1 className="text-3xl font-headline font-bold text-blue-600">Tasks Today</h1>
               <p className="text-muted-foreground">Managing your assigned delivery registry from Cloud Firestore.</p>
             </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={isSharing ? stopSharing : startSharing} className={cn("rounded-full h-10 px-4 font-bold", isSharing ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700")}>
+                {isSharing ? "Stop Sharing" : "Start Sharing"}
+              </Button>
+              <Badge className={cn("rounded-full", isSharing ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+                {isSharing ? "Sharing ON" : "Sharing OFF"}
+              </Badge>
+            </div>
             <div className="flex items-center gap-2 print:hidden">
-              <div className="flex items-center gap-2 bg-white rounded-full p-1 border border-blue-100">
-                <Button 
-                  variant={isSharing ? "destructive" : "default"} 
-                  size="sm" 
-                  onClick={isSharing ? stopSharing : startSharing}
-                  className="rounded-full h-8 px-4 font-bold text-[10px]"
-                >
-                  {isSharing ? "Stop Sharing" : "Start Sharing"}
-                </Button>
-                <span className={cn("text-[10px] font-bold px-2", 
-                  status === 'on' ? "text-green-600" : 
-                  status === 'denied' ? "text-red-600" : 
-                  status === 'unavailable' ? "text-red-600" :
-                  "text-slate-400")}>
-                  {status === 'on' ? "ON" : 
-                   status === 'denied' ? "Denied" :
-                   status === 'unavailable' ? "N/A" :
-                   "OFF"}
-                </span>
-              </div>
               {(Object.values(colFilters).some(v => v !== '') || Object.values(activeFilters).some(v => v) || selectedDate) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="rounded-full h-8 px-3 text-blue-600 hover:bg-blue-100 font-bold text-[10px] uppercase tracking-wider">
                   <FilterX className="w-3.5 h-3.5 mr-1.5" /> Clear Filters

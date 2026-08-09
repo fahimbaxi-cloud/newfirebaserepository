@@ -57,6 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { RiderMap } from '@/components/RiderMap';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
@@ -98,6 +99,7 @@ export default function AdminDashboard() {
   const paymentsQuery = useMemoFirebase(() => collection(firestore, 'payments'), [firestore]);
   const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
   const menuQuery = useMemoFirebase(() => collection(firestore, 'menu_items'), [firestore]);
+  const riderLocationsQuery = useMemoFirebase(() => collection(firestore, 'riderLocations'), [firestore]);
 
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
   const { data: users = [], isLoading: usersLoading } = useCollection<User>(usersQuery);
@@ -105,6 +107,7 @@ export default function AdminDashboard() {
   const { data: payments = [] } = useCollection<any>(paymentsQuery);
   const { data: allPackages = [] } = useCollection<any>(packagesQuery);
   const { data: menuItems = [] } = useCollection<any>(menuQuery);
+  const { data: riders = [] } = useCollection<any>(riderLocationsQuery);
 
   const [activeFilters, setActiveFilters] = useState({
     morning: false,
@@ -804,6 +807,30 @@ export default function AdminDashboard() {
         </div>
       </section>
 
+      <section className="mt-12 space-y-6">
+        <h2 className="text-2xl font-bold">Live Rider Tracking</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="col-span-1 rounded-3xl">
+            <CardHeader><CardTitle>Active Riders</CardTitle></CardHeader>
+            <CardContent>
+              {riders.filter(r => r.sharing).map(r => (
+                  <div key={r.riderUid} className="flex items-center justify-between p-2 border-b">
+                    <span>{r.riderUid}</span>
+                    <span className={cn("text-xs font-bold", Date.now() - new Date(r.lastUpdated).getTime() < 30000 ? "text-green-500" : "text-red-500")}>
+                        {Date.now() - new Date(r.lastUpdated).getTime() < 30000 ? "Online" : "Stale"}
+                    </span>
+                  </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card className="col-span-2 rounded-3xl">
+            <CardContent className="p-0 overflow-hidden rounded-3xl">
+              <RiderMap riders={riders} />
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+      
       {selectedOrder && (
         <>
           <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
