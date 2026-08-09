@@ -807,30 +807,6 @@ export default function AdminDashboard() {
         </div>
       </section>
 
-      <section className="mt-12 space-y-6">
-        <h2 className="text-2xl font-bold">Live Rider Tracking</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="col-span-1 rounded-3xl">
-            <CardHeader><CardTitle>Active Riders</CardTitle></CardHeader>
-            <CardContent>
-              {(riders || []).filter(r => r.sharing).map(r => (
-                  <div key={r.riderUid} className="flex items-center justify-between p-2 border-b">
-                    <span>{r.riderUid}</span>
-                    <span className={cn("text-xs font-bold", Date.now() - new Date(r.lastUpdated).getTime() < 30000 ? "text-green-500" : "text-red-500")}>
-                        {Date.now() - new Date(r.lastUpdated).getTime() < 30000 ? "Online" : "Stale"}
-                    </span>
-                  </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card className="col-span-2 rounded-3xl">
-            <CardContent className="p-0 overflow-hidden rounded-3xl">
-              <RiderMap riders={riders} />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-      
       {selectedOrder && (
         <>
           <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
