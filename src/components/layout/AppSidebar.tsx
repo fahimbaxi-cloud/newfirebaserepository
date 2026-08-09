@@ -19,7 +19,6 @@ import {
   BookText,
   Settings,
   MessageSquare,
-  MapPinned,
   ChevronRight,
 } from "lucide-react";
 
@@ -53,7 +52,6 @@ import { cn } from "@/lib/utils";
 
 const adminNavItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutGrid },
-  { title: "Rider Tracking", url: "/admin/rider-tracking", icon: MapPinned },
   { title: "Chat Board", url: "/admin/chat", icon: MessageSquare },
   { title: "Item", url: "/admin/menu", icon: Utensils },
   { title: "Broadcast", url: "/admin/broadcast", icon: Bell },

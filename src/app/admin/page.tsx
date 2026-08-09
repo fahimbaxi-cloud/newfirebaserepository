@@ -57,7 +57,6 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RiderMap } from '@/components/RiderMap';
 import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
@@ -99,7 +98,6 @@ export default function AdminDashboard() {
   const paymentsQuery = useMemoFirebase(() => collection(firestore, 'payments'), [firestore]);
   const packagesQuery = useMemoFirebase(() => collection(firestore, 'packages'), [firestore]);
   const menuQuery = useMemoFirebase(() => collection(firestore, 'menu_items'), [firestore]);
-  const riderLocationsQuery = useMemoFirebase(() => collection(firestore, 'riderLocations'), [firestore]);
 
   const { data: orders = [], isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
   const { data: users = [], isLoading: usersLoading } = useCollection<User>(usersQuery);
@@ -107,7 +105,6 @@ export default function AdminDashboard() {
   const { data: payments = [] } = useCollection<any>(paymentsQuery);
   const { data: allPackages = [] } = useCollection<any>(packagesQuery);
   const { data: menuItems = [] } = useCollection<any>(menuQuery);
-  const { data: riders = [] } = useCollection<any>(riderLocationsQuery);
 
   const [activeFilters, setActiveFilters] = useState({
     morning: false,

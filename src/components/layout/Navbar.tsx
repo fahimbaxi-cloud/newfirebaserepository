@@ -69,7 +69,6 @@ export function Navbar({ role }: { role: 'customer' | 'admin' | 'delivery' }) {
       { label: 'Items', href: '/admin/menu', icon: Utensils },
       { label: 'Manufacturing', href: '/admin/manufacturing', icon: Factory },
       { label: 'Broadcast', href: '/admin/broadcast', icon: Bell },
-      { label: 'Tracking', href: '/admin/rider-tracking', icon: MapPinned },
       { label: 'Users', href: '/admin/users', icon: Users },
       { label: 'Purchases', href: '/admin/purchases', icon: ShoppingCart },
       { label: 'Payments', href: '/admin/payments', icon: CreditCard },

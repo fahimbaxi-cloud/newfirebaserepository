@@ -171,21 +171,6 @@
         "date": { "type": "string" }
       }
     },
-    "RiderLocation": {
-      "title": "RiderLocation",
-      "type": "object",
-      "properties": {
-        "riderUid": { "type": "string" },
-        "latitude": { "type": "number" },
-        "longitude": { "type": "number" },
-        "accuracy": { "type": "number" },
-        "speed": { "type": "number" },
-        "heading": { "type": "number" },
-        "timestamp": { "type": "number" },
-        "sharing": { "type": "boolean" },
-        "lastUpdated": { "type": "string", "format": "date-time" }
-      }
-    },
     "GeneralTransaction": {
       "title": "GeneralTransaction",
       "type": "object",
@@ -257,7 +242,6 @@
     "/payments/{paymentId}": { "schema": { "$ref": "#/backend/entities/Payment" }, "description": "Payment records." },
     "/receipts/{receiptId}": { "schema": { "$ref": "#/backend/entities/CustomerReceipt" }, "description": "Receipt records." },
     "/manufacturing_logs/{logId}": { "schema": { "$ref": "#/backend/entities/ManufacturingLog" }, "description": "Manufacturing logs." },
-    "/riderLocations/{riderUid}": { "schema": { "$ref": "#/backend/entities/RiderLocation" }, "description": "Rider live locations." },
     "/general_transactions/{txId}": { "schema": { "$ref": "#/backend/entities/GeneralTransaction" }, "description": "Income/Expense entries." },
     "/journal_entries/{jvId}": { "schema": { "$ref": "#/backend/entities/JournalEntry" }, "description": "Journal entries." },
     "/suppliers/{supplierId}": { "schema": { "$ref": "#/backend/entities/Supplier" }, "description": "Supplier records." },
