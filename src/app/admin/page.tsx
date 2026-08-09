@@ -813,7 +813,7 @@ export default function AdminDashboard() {
           <Card className="col-span-1 rounded-3xl">
             <CardHeader><CardTitle>Active Riders</CardTitle></CardHeader>
             <CardContent>
-              {riders.filter(r => r.sharing).map(r => (
+              {(riders || []).filter(r => r.sharing).map(r => (
                   <div key={r.riderUid} className="flex items-center justify-between p-2 border-b">
                     <span>{r.riderUid}</span>
                     <span className={cn("text-xs font-bold", Date.now() - new Date(r.lastUpdated).getTime() < 30000 ? "text-green-500" : "text-red-500")}>

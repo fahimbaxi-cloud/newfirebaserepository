@@ -20,7 +20,7 @@ export function RiderMap({ riders }: { riders: any[] }) {
     return (
         <MapContainer center={[20, 77] as any} zoom={5} style={{ height: '400px', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            {riders.filter(r => r.sharing).map(rider => (
+            {(riders || []).filter(r => r.sharing).map(rider => (
                 <Marker key={rider.riderUid} position={[rider.latitude, rider.longitude]}>
                     <Popup>Rider: {rider.riderUid}</Popup>
                 </Marker>
