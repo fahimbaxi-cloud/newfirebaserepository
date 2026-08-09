@@ -40,7 +40,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, parseISO, addDays, differenceInDays, startOfDay } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDatabase, useAuth } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDatabase, useAuth, useUser } from '@/firebase';
 import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
 import { ref, set, serverTimestamp, onDisconnect } from 'firebase/database';
 import { downloadPDF } from '@/lib/pdf-export';
@@ -51,6 +51,7 @@ const LocationSharing = () => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const db = useDatabase();
   const auth = useAuth();
+  const user = useUser();
   const watchId = useRef<number | null>(null);
   const { toast } = useToast();
 
@@ -63,20 +64,27 @@ const LocationSharing = () => {
   }, []);
 
   const startSharing = () => {
-    if (!auth.currentUser) return;
+    console.log("Attempting to start sharing...");
+    if (!user) {
+        console.warn("No current user auth found");
+        return;
+    }
     if (!("geolocation" in navigator)) {
       setStatus('UNAVAILABLE');
+      console.error("Geolocation not available");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        console.log("Geolocation permission granted");
         setStatus('ON');
         setSharing(true);
         watchId.current = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-            const locationRef = ref(db, `riderLocations/${auth.currentUser?.uid}`);
+            console.log("Updating position:", { latitude, longitude });
+            const locationRef = ref(db, `riderLocations/${user.uid}`);
             set(locationRef, {
               latitude,
               longitude,
@@ -90,7 +98,7 @@ const LocationSharing = () => {
             setLastUpdate(new Date());
           },
           (err) => {
-            console.error(err);
+            console.error("Watch position error:", err);
             if (err.code === 1) setStatus('DENIED');
             else setStatus('UNAVAILABLE');
             stopSharing();
@@ -99,21 +107,29 @@ const LocationSharing = () => {
         );
       },
       (err) => {
-        if (err.code === 1) setStatus('DENIED');
-        else setStatus('UNAVAILABLE');
-      }
+        console.error("Get current position error:", err.message, err);
+        if (err.code === 1) {
+          setStatus('DENIED');
+          toast({ title: "Permission Denied", description: "Please allow location access to share your location.", variant: "destructive" });
+        } else {
+          setStatus('UNAVAILABLE');
+          toast({ title: "Location Unavailable", description: `Could not retrieve your location: ${err.message}. Check your GPS settings.`, variant: "destructive" });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
   };
 
   const stopSharing = () => {
+    console.log("Stopping sharing...");
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
       watchId.current = null;
     }
     setSharing(false);
     setStatus('OFF');
-    if (auth.currentUser) {
-      const locationRef = ref(db, `riderLocations/${auth.currentUser.uid}`);
+    if (user) {
+      const locationRef = ref(db, `riderLocations/${user.uid}`);
       set(locationRef, { sharing: false, lastUpdated: serverTimestamp() });
     }
   };
