@@ -65,6 +65,7 @@ export function Navbar({ role }: { role: 'customer' | 'admin' | 'delivery' }) {
     ],
     admin: [
       { label: 'Dashboard', href: '/admin', icon: ClipboardList },
+      { label: 'Live Tracking', href: '/admin/live-tracking', icon: MapPinned },
       { label: 'Support', href: '/admin/chat', icon: MessageSquare },
       { label: 'Items', href: '/admin/menu', icon: Utensils },
       { label: 'Manufacturing', href: '/admin/manufacturing', icon: Factory },

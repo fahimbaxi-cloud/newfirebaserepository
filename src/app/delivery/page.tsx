@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,14 +34,110 @@ import {
   Layers, 
   ArrowUpDown as SortIcon, 
   Printer, 
-  FileDown 
+  FileDown,
+  Navigation
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, parseISO, addDays, differenceInDays, startOfDay } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDatabase, useAuth } from '@/firebase';
 import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
+import { ref, set, serverTimestamp, onDisconnect } from 'firebase/database';
 import { downloadPDF } from '@/lib/pdf-export';
+
+const LocationSharing = () => {
+  const [sharing, setSharing] = useState(false);
+  const [status, setStatus] = useState<'OFF' | 'ON' | 'DENIED' | 'UNAVAILABLE'>('OFF');
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const db = useDatabase();
+  const auth = useAuth();
+  const watchId = useRef<number | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    return () => {
+      if (watchId.current !== null) {
+        navigator.geolocation.clearWatch(watchId.current);
+      }
+    };
+  }, []);
+
+  const startSharing = () => {
+    if (!auth.currentUser) return;
+    if (!("geolocation" in navigator)) {
+      setStatus('UNAVAILABLE');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setStatus('ON');
+        setSharing(true);
+        watchId.current = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy, speed, heading } = pos.coords;
+            const locationRef = ref(db, `riderLocations/${auth.currentUser?.uid}`);
+            set(locationRef, {
+              latitude,
+              longitude,
+              accuracy,
+              speed,
+              heading,
+              timestamp: serverTimestamp(),
+              sharing: true,
+              lastUpdated: serverTimestamp()
+            });
+            setLastUpdate(new Date());
+          },
+          (err) => {
+            console.error(err);
+            if (err.code === 1) setStatus('DENIED');
+            else setStatus('UNAVAILABLE');
+            stopSharing();
+          },
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        );
+      },
+      (err) => {
+        if (err.code === 1) setStatus('DENIED');
+        else setStatus('UNAVAILABLE');
+      }
+    );
+  };
+
+  const stopSharing = () => {
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    setSharing(false);
+    setStatus('OFF');
+    if (auth.currentUser) {
+      const locationRef = ref(db, `riderLocations/${auth.currentUser.uid}`);
+      set(locationRef, { sharing: false, lastUpdated: serverTimestamp() });
+    }
+  };
+
+  return (
+    <Card className="rounded-3xl border-none shadow-xl mb-8">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <Navigation className="w-5 h-5 text-blue-600" />
+          Rider Location Sharing
+        </CardTitle>
+        <Badge variant={status === 'ON' ? 'default' : 'secondary'} className={status === 'ON' ? 'bg-green-500' : ''}>
+          {status}
+        </Badge>
+      </CardHeader>
+      <CardContent className="flex items-center gap-4">
+        <Button onClick={sharing ? stopSharing : startSharing} variant={sharing ? 'destructive' : 'default'}>
+          {sharing ? 'Stop Location Sharing' : 'Start Location Sharing'}
+        </Button>
+        {lastUpdate && <span className="text-xs text-muted-foreground">Last updated: {lastUpdate.toLocaleTimeString()}</span>}
+      </CardContent>
+    </Card>
+  );
+};
 
 const StatusRadio = ({ active, onClick, activeColor, isHeader = false }: { active: boolean, onClick: () => void, activeColor: string, isHeader?: boolean }) => (
   <div 
@@ -473,6 +569,7 @@ export default function DeliveryDashboard() {
       <Navbar role="delivery" />
       
       <main className="max-w-7xl mx-auto px-4 py-8">
+        <LocationSharing />
         <header className="mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6 print:mb-4">
           <div className="flex items-center gap-4">
             <div>

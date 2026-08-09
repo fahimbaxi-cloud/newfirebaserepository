@@ -14,6 +14,7 @@ import {
   CreditCard,
   ReceiptText,
   BarChart3,
+  MapPinned,
   LogOut,
   Wallet,
   BookText,
@@ -52,6 +53,7 @@ import { cn } from "@/lib/utils";
 
 const adminNavItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutGrid },
+  { title: "Live Tracking", url: "/admin/live-tracking", icon: MapPinned },
   { title: "Chat Board", url: "/admin/chat", icon: MessageSquare },
   { title: "Item", url: "/admin/menu", icon: Utensils },
   { title: "Broadcast", url: "/admin/broadcast", icon: Bell },
