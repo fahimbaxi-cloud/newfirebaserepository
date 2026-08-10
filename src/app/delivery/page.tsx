@@ -97,7 +97,7 @@ const LocationSharing = () => {
         watchId.current = navigator.geolocation.watchPosition(
           async (pos) => {
             const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-            console.log("Updating position:", { latitude, longitude });
+            console.log("Updating position in database:", db.app.options.databaseURL, "collection:", 'riderLocations', "doc:", user.uid);
             const locationRef = doc(db, 'riderLocations', user.uid);
             try {
               await setDoc(locationRef, {
