@@ -42,6 +42,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
       dbName = "baccha1";
     }
     // Other domains (including .hosted.app) default to '(default)'
+    console.log(`[Firebase Init] Domain: ${hostname}, Database: ${dbName}`);
   }
 
   return {

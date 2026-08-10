@@ -16,9 +16,8 @@ enum OperationType {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  console.error('Firestore Error: ', error);
-  // Depending on requirements, we might want to trigger a UI notification instead
-  // throw new Error(`Firestore Error: ${operationType} at ${path}`);
+  console.error('Firestore Error: ', operationType, 'at', path, error);
+  alert(`Firestore Error: ${operationType} at ${path}. Check console for details.`);
 }
 import { Loader2, MapPin, Clock, User } from 'lucide-react';
 import { format } from 'date-fns';

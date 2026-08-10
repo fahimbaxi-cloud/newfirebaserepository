@@ -53,8 +53,8 @@ enum OperationType {
 }
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  console.error('Firestore Error: ', error);
-  throw new Error(`Firestore Error: ${operationType} at ${path}`);
+  console.error('Firestore Error: ', operationType, 'at', path, error);
+  alert(`Firestore Error: ${operationType} at ${path}. Check console for details.`);
 }
 
 import { downloadPDF } from '@/lib/pdf-export';
