@@ -40,16 +40,30 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, isSameDay, parseISO, addDays, differenceInDays, startOfDay } from 'date-fns';
-import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useDatabase, useAuth, useUser } from '@/firebase';
-import { collection, doc, query, where, getDocs, limit } from 'firebase/firestore';
-import { ref, set, serverTimestamp, onDisconnect } from 'firebase/database';
+import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, useAuth, useUser } from '@/firebase';
+import { collection, doc, query, where, getDocs, limit, setDoc, serverTimestamp } from 'firebase/firestore';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  console.error('Firestore Error: ', error);
+  throw new Error(`Firestore Error: ${operationType} at ${path}`);
+}
+
 import { downloadPDF } from '@/lib/pdf-export';
 
 const LocationSharing = () => {
   const [sharing, setSharing] = useState(false);
   const [status, setStatus] = useState<'OFF' | 'ON' | 'DENIED' | 'UNAVAILABLE'>('OFF');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const db = useDatabase();
+  const db = useFirestore();
   const auth = useAuth();
   const user = useUser();
   const watchId = useRef<number | null>(null);
@@ -63,7 +77,7 @@ const LocationSharing = () => {
     };
   }, []);
 
-  const startSharing = () => {
+  const startSharing = async () => {
     console.log("Attempting to start sharing...");
     if (!user) {
         console.warn("No current user auth found");
@@ -81,20 +95,24 @@ const LocationSharing = () => {
         setStatus('ON');
         setSharing(true);
         watchId.current = navigator.geolocation.watchPosition(
-          (pos) => {
+          async (pos) => {
             const { latitude, longitude, accuracy, speed, heading } = pos.coords;
             console.log("Updating position:", { latitude, longitude });
-            const locationRef = ref(db, `riderLocations/${user.uid}`);
-            set(locationRef, {
-              latitude,
-              longitude,
-              accuracy,
-              speed,
-              heading,
-              timestamp: serverTimestamp(),
-              sharing: true,
-              lastUpdated: serverTimestamp()
-            });
+            const locationRef = doc(db, 'riderLocations', user.uid);
+            try {
+              await setDoc(locationRef, {
+                latitude,
+                longitude,
+                accuracy,
+                speed,
+                heading,
+                timestamp: serverTimestamp(),
+                sharing: true,
+                lastUpdated: serverTimestamp()
+              }, { merge: true });
+            } catch (error) {
+              handleFirestoreError(error, OperationType.WRITE, 'riderLocations');
+            }
             setLastUpdate(new Date());
           },
           (err) => {
@@ -120,7 +138,7 @@ const LocationSharing = () => {
     );
   };
 
-  const stopSharing = () => {
+  const stopSharing = async () => {
     console.log("Stopping sharing...");
     if (watchId.current !== null) {
       navigator.geolocation.clearWatch(watchId.current);
@@ -129,8 +147,12 @@ const LocationSharing = () => {
     setSharing(false);
     setStatus('OFF');
     if (user) {
-      const locationRef = ref(db, `riderLocations/${user.uid}`);
-      set(locationRef, { sharing: false, lastUpdated: serverTimestamp() });
+      const locationRef = doc(db, 'riderLocations', user.uid);
+      try {
+        await setDoc(locationRef, { sharing: false, lastUpdated: serverTimestamp() }, { merge: true });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, 'riderLocations');
+      }
     }
   };
 

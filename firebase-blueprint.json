@@ -222,6 +222,20 @@
         "openingType": { "type": "string", "enum": ["Debit", "Credit"] }
       }
     },
+    "RiderLocation": {
+      "title": "RiderLocation",
+      "type": "object",
+      "properties": {
+        "riderId": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "speed": { "type": "number" },
+        "heading": { "type": "number" },
+        "sharing": { "type": "boolean" },
+        "lastUpdated": { "type": "string" }
+      }
+    },
     "Unit": { "title": "Unit", "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
     "Category": { "title": "Category", "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
     "ExpenseCategory": { "title": "ExpenseCategory", "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
@@ -250,6 +264,7 @@
     "/units/{unitId}": { "schema": { "$ref": "#/backend/entities/Unit" }, "description": "Measurement units." },
     "/categories/{categoryId}": { "schema": { "$ref": "#/backend/entities/Category" }, "description": "Raw item categories." },
     "/expense_categories/{catId}": { "schema": { "$ref": "#/backend/entities/ExpenseCategory" }, "description": "Expense categories." },
-    "/income_categories/{catId}": { "schema": { "$ref": "#/backend/entities/IncomeCategory" }, "description": "Income categories." }
+    "/income_categories/{catId}": { "schema": { "$ref": "#/backend/entities/IncomeCategory" }, "description": "Income categories." },
+    "/riderLocations/{riderId}": { "schema": { "$ref": "#/backend/entities/RiderLocation" }, "description": "Rider locations." }
   }
 }

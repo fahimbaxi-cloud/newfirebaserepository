@@ -3,53 +3,90 @@
 import { useEffect, useState, useRef } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ref, onValue, off } from 'firebase/database';
-import { useDatabase } from '@/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  console.error('Firestore Error: ', error);
+  // Depending on requirements, we might want to trigger a UI notification instead
+  // throw new Error(`Firestore Error: ${operationType} at ${path}`);
+}
 import { Loader2, MapPin, Clock, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { Loader } from '@googlemaps/js-api-loader';
 
 export default function LiveTrackingPage() {
-  const db = useDatabase();
+  const db = useFirestore();
   const [riders, setRiders] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ridersRef = ref(db, 'riderLocations');
-    console.log("Subscribing to path: riderLocations");
-    onValue(ridersRef, (snapshot) => {
-      const data = snapshot.val();
-      console.log("Received snapshot data:", data);
-      setRiders(data || {});
+    const ridersCol = collection(db, 'riderLocations');
+    console.log("Subscribing to Firestore collection: riderLocations");
+    
+    const unsubscribe = onSnapshot(ridersCol, (snapshot) => {
+      const ridersData: Record<string, any> = {};
+      snapshot.forEach((doc) => {
+        ridersData[doc.id] = doc.data();
+      });
+      console.log("Received Firestore data:", ridersData);
+      setRiders(ridersData);
       setLoading(false);
     }, (error) => {
-      console.error("Firebase database error:", error);
+      handleFirestoreError(error, OperationType.LIST, 'riderLocations');
       setLoading(false);
     });
 
-    return () => off(ridersRef);
+    return () => unsubscribe();
   }, [db]);
 
   useEffect(() => {
     console.log("Riders:", riders);
-    if (!mapRef.current || loading || Object.keys(riders).length === 0) return;
+    
+    if (!mapRef.current || loading) {
+        console.warn("Map not ready or loading...");
+        return;
+    }
+    
+    if (Object.keys(riders).length === 0) {
+        console.log("No riders to track.");
+        return;
+    }
+
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    console.log("Map loader triggered. Riders count:", Object.keys(riders).length, "API Key present:", !!apiKey);
+    
+    if (!apiKey) {
+        console.error("Google Maps API Key is missing!");
+        return;
+    }
 
     const loader = new Loader({
-      apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string,
+      apiKey: apiKey,
       version: 'weekly',
     });
 
     loader.load().then((google) => {
-      console.log("Maps loaded");
+      console.log("Maps loaded successfully");
       const map = new google.maps.Map(mapRef.current!, {
         center: { lat: 0, lng: 0 },
         zoom: 2,
       });
 
       Object.entries(riders).forEach(([uid, location]) => {
-        console.log(`Rider ${uid} sharing:`, location.sharing);
-        if (location.sharing) {
+        console.log(`Checking rider ${uid}:`, location);
+        if (location && location.sharing) {
+          console.log(`Adding marker for ${uid} at ${location.latitude}, ${location.longitude}`);
           new google.maps.Marker({
             position: { lat: location.latitude, lng: location.longitude },
             map,
@@ -57,7 +94,12 @@ export default function LiveTrackingPage() {
           });
         }
       });
-    }).catch(e => console.error("Maps load error:", e));
+    }).catch(e => {
+        console.error("Maps load error:", e);
+        if (e.message && e.message.includes("ApiKeys")) {
+            console.error("This often happens if the API key is restricted or invalid.");
+        }
+    });
   }, [riders, loading]);
 
   return (
