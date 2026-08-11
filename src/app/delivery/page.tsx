@@ -59,13 +59,11 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 import { downloadPDF } from '@/lib/pdf-export';
 
-const LocationSharing = () => {
+const LocationSharing = ({ user }: { user: User | null }) => {
   const [sharing, setSharing] = useState(false);
   const [status, setStatus] = useState<'OFF' | 'ON' | 'DENIED' | 'UNAVAILABLE'>('OFF');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const db = useFirestore();
-  const auth = useAuth();
-  const user = useUser();
   const watchId = useRef<number | null>(null);
   const { toast } = useToast();
 
@@ -78,7 +76,9 @@ const LocationSharing = () => {
   }, []);
 
   const startSharing = async () => {
-    console.log("Attempting to start sharing...");
+    console.log("Attempting to start sharing... user:", user);
+    console.log("user.id:", user?.id);
+    console.log("user.bacchabiteId:", user?.bacchabiteId);
     if (!user) {
         console.warn("No current user auth found");
         return;
@@ -97,8 +97,13 @@ const LocationSharing = () => {
         watchId.current = navigator.geolocation.watchPosition(
           async (pos) => {
             const { latitude, longitude, accuracy, speed, heading } = pos.coords;
-            console.log("Updating position in database:", db.app.options.databaseURL, "collection:", 'riderLocations', "doc:", user.uid);
-            const locationRef = doc(db, 'riderLocations', user.uid);
+            const docId = user.id || user.bacchabiteId;
+            if (!docId) {
+                console.error("Cannot update position: No valid user ID found");
+                return;
+            }
+            console.log("Updating position in database:", db.app.options.databaseURL, "collection:", 'riderLocations', "doc:", docId);
+            const locationRef = doc(db, 'riderLocations', docId);
             try {
               await setDoc(locationRef, {
                 latitude,
@@ -147,7 +152,7 @@ const LocationSharing = () => {
     setSharing(false);
     setStatus('OFF');
     if (user) {
-      const locationRef = doc(db, 'riderLocations', user.uid);
+      const locationRef = doc(db, 'riderLocations', user.id);
       try {
         await setDoc(locationRef, { sharing: false, lastUpdated: serverTimestamp() }, { merge: true });
       } catch (error) {
@@ -607,7 +612,7 @@ export default function DeliveryDashboard() {
       <Navbar role="delivery" />
       
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <LocationSharing />
+        <LocationSharing user={currentUser} />
         <header className="mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6 print:mb-4">
           <div className="flex items-center gap-4">
             <div>
