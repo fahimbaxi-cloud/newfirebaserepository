@@ -31,7 +31,7 @@ export default function LiveTrackingPage() {
 
   useEffect(() => {
     const ridersCol = collection(db, 'riderLocations');
-    console.log("Subscribing to Firestore collection: riderLocations");
+    console.log("Subscribing to Firestore collection: riderLocations, dbURL:", db.app.options.databaseURL);
     
     const unsubscribe = onSnapshot(ridersCol, (snapshot) => {
       const ridersData: Record<string, any> = {};

@@ -45,10 +45,13 @@ export function getSdks(firebaseApp: FirebaseApp) {
     console.log(`[Firebase Init] Domain: ${hostname}, Database: ${dbName}`);
   }
 
+  const firestoreInstance = getFirestore(firebaseApp, dbName);
+  console.log(`[Firebase Init] Using Firestore Database: ${firestoreInstance.type} ID: ${dbName}`);
+
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp, dbName),
+    firestore: firestoreInstance,
     database: getDatabase(firebaseApp)
   };
 }
