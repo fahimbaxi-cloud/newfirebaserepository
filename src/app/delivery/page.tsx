@@ -77,16 +77,15 @@ const LocationSharing = ({ user }: { user: User | null }) => {
 
   const startSharing = async () => {
     console.log("Attempting to start sharing... user:", user);
-    console.log("user.id:", user?.id);
-    console.log("user.bacchabiteId:", user?.bacchabiteId);
+    console.log("db:", db);
     if (!user) {
         console.warn("No current user auth found");
         return;
     }
     if (!("geolocation" in navigator)) {
-      setStatus('UNAVAILABLE');
-      console.error("Geolocation not available");
-      return;
+        setStatus('UNAVAILABLE');
+        console.error("Geolocation not available");
+        return;
     }
 
     navigator.geolocation.getCurrentPosition(
@@ -98,11 +97,12 @@ const LocationSharing = ({ user }: { user: User | null }) => {
           async (pos) => {
             const { latitude, longitude, accuracy, speed, heading } = pos.coords;
             const docId = user.id || user.bacchabiteId;
+            console.log("user:", user, "docId:", docId);
             if (!docId) {
                 console.error("Cannot update position: No valid user ID found");
                 return;
             }
-            console.log("Updating position in database:", db.app.options.databaseURL, "collection:", 'riderLocations', "doc:", docId);
+            console.log("Updating position in database:", db, "collection:", 'riderLocations', "doc:", docId);
             const locationRef = doc(db, 'riderLocations', docId);
             try {
               await setDoc(locationRef, {
@@ -126,7 +126,7 @@ const LocationSharing = ({ user }: { user: User | null }) => {
             else setStatus('UNAVAILABLE');
             stopSharing();
           },
-          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
         );
       },
       (err) => {
@@ -139,7 +139,7 @@ const LocationSharing = ({ user }: { user: User | null }) => {
           toast({ title: "Location Unavailable", description: `Could not retrieve your location: ${err.message}. Check your GPS settings.`, variant: "destructive" });
         }
       },
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 30000, maximumAge: 5000 }
     );
   };
 
