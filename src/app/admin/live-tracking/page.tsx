@@ -71,7 +71,7 @@ export default function LiveTrackingPage() {
     }
 
     setOptions({
-      apiKey: apiKey,
+      key: apiKey,
       version: 'weekly',
     });
 
