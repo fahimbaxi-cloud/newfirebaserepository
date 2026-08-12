@@ -21,7 +21,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 }
 import { Loader2, MapPin, Clock, User } from 'lucide-react';
 import { format } from 'date-fns';
-import { Loader } from '@googlemaps/js-api-loader';
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader';
 
 export default function LiveTrackingPage() {
   const db = useFirestore();
@@ -38,7 +38,7 @@ export default function LiveTrackingPage() {
       snapshot.forEach((doc) => {
         ridersData[doc.id] = doc.data();
       });
-      console.log("Received Firestore data:", ridersData);
+      console.log("Riders received:", Object.keys(ridersData).length);
       setRiders(ridersData);
       setLoading(false);
     }, (error) => {
@@ -70,23 +70,25 @@ export default function LiveTrackingPage() {
         return;
     }
 
-    const loader = new Loader({
+    setOptions({
       apiKey: apiKey,
       version: 'weekly',
     });
 
-    loader.load().then((google) => {
-      console.log("Maps loaded successfully");
-      const map = new google.maps.Map(mapRef.current!, {
+    Promise.all([
+        importLibrary('maps'),
+        importLibrary('marker')
+    ]).then(([mapsLibrary, markerLibrary]) => {
+      console.log("Maps and Marker libraries loaded successfully");
+      const map = new mapsLibrary.Map(mapRef.current!, {
         center: { lat: 0, lng: 0 },
         zoom: 2,
       });
-
+      
+      const { Marker } = markerLibrary;
       Object.entries(riders).forEach(([uid, location]) => {
-        console.log(`Checking rider ${uid}:`, location);
         if (location && location.sharing) {
-          console.log(`Adding marker for ${uid} at ${location.latitude}, ${location.longitude}`);
-          new google.maps.Marker({
+          new Marker({
             position: { lat: location.latitude, lng: location.longitude },
             map,
             title: `Rider ${uid.substr(0, 8)}`,
@@ -131,7 +133,7 @@ export default function LiveTrackingPage() {
                             <CardContent>
                                 <div className="flex items-center gap-4 text-sm">
                                     <div className="flex items-center gap-1"><MapPin className="w-4 h-4 text-blue-600"/> {location.latitude?.toFixed(4)}, {location.longitude?.toFixed(4)}</div>
-                                    <div className="flex items-center gap-1"><Clock className="w-4 h-4 text-blue-600"/> {location.lastUpdated ? format(new Date(location.lastUpdated), 'HH:mm:ss') : 'N/A'}</div>
+                                    <div className="flex items-center gap-1"><Clock className="w-4 h-4 text-blue-600"/> {location.lastUpdated && !isNaN(new Date(location.lastUpdated).getTime()) ? format(new Date(location.lastUpdated), 'HH:mm:ss') : 'Invalid Date'}</div>
                                 </div>
                             </CardContent>
                         </Card>
