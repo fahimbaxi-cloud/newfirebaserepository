@@ -52,7 +52,7 @@ import {
   FileDown,
   CalendarDays
 } from 'lucide-react';
-import { format, isSameDay, parseISO, isValid } from 'date-fns';
+import { format, isSameDay, parseISO, isValid, addDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
     const data = safeOrders.filter(order => {
       const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
       
-      if (filterDate && !isSameDay(orderDate, filterDate)) {
+      if (filterDate && !isSameDay(orderDate, addDays(filterDate, 1))) {
         return false;
       }
 
