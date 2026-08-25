@@ -300,6 +300,7 @@ export default function AdminDashboard() {
 
   const handleColFilterChange = (key: keyof typeof columnFilters, val: string) => {
     setColFilters(prev => ({ ...prev, [key]: val }));
+    if (key === 'date') setFilterDate(undefined);
   };
 
   const resetFilters = () => {
@@ -445,6 +446,7 @@ export default function AdminDashboard() {
                     selected={filterDate}
                     onSelect={(date) => {
                       setFilterDate(date);
+                      setColFilters(prev => ({ ...prev, date: '' }));
                       setIsFilterDatePickerOpen(false);
                     }}
                     initialFocus
