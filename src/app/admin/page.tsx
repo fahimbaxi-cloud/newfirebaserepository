@@ -61,17 +61,17 @@ import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking
 import { collection, doc } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
 
-const parseDateSafe = (d: any): Date | null => {
-  if (!d) return null;
+const parseDateSafe = (d: any): Date => {
+  if (!d) return new Date();
   if (d instanceof Date) return d;
   if (typeof d === 'string') {
     const parsed = parseISO(d);
-    return isValid(parsed) ? parsed : null;
+    return isValid(parsed) ? parsed : new Date();
   }
   if (d && typeof d === 'object' && 'seconds' in d) {
     return new Date(d.seconds * 1000);
   }
-  return null;
+  return new Date();
 };
 
 const ColumnFilter = ({ placeholder, value, onChange }: { placeholder: string, value: string, onChange: (v: string) => void }) => (
@@ -119,8 +119,7 @@ export default function AdminDashboard() {
     package: '',
     qty: '',
     slot: '',
-    status: '',
-    targetDate: ''
+    status: ''
   });
 
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
@@ -216,8 +215,6 @@ export default function AdminDashboard() {
       const qtyStr = (order.packageQuantity || 1).toString();
       const slotStr = `${order.slot} ${order.deliveryTime}`.toLowerCase();
       const statusStr = order.status.toLowerCase();
-      const targetDateObj = parseDateSafe(order.targetDeliveryDate);
-      const targetDateStr = targetDateObj ? format(targetDateObj, 'MMM dd, yyyy').toLowerCase() : '';
 
       return (
         dateStr.includes(columnFilters.date.toLowerCase()) &&
@@ -225,8 +222,7 @@ export default function AdminDashboard() {
         packageStr.includes(columnFilters.package.toLowerCase()) &&
         qtyStr.includes(columnFilters.qty.toLowerCase()) &&
         slotStr.includes(columnFilters.slot.toLowerCase()) &&
-        statusStr.includes(columnFilters.status.toLowerCase()) &&
-        targetDateStr.includes(columnFilters.targetDate.toLowerCase())
+        statusStr.includes(columnFilters.status.toLowerCase())
       );
     });
 
@@ -303,7 +299,7 @@ export default function AdminDashboard() {
 
   const resetFilters = () => {
     setActiveFilters({ morning: false, noon: false, veg: false, nonVeg: false });
-    setColFilters({ date: '', customer: '', package: '', qty: '', slot: '', status: '', targetDate: '' });
+    setColFilters({ date: '', customer: '', package: '', qty: '', slot: '', status: '' });
     setFilterDate(undefined);
     setSortConfig({ key: 'createdAt', direction: 'desc' });
   };
@@ -316,10 +312,9 @@ export default function AdminDashboard() {
     const head = [['Order Date / Time', 'Target Date', 'Customer', 'Package', 'Qty', 'Slot', 'Total', 'Status']];
     const body = filteredOrders.map(o => {
       const d = o.referenceDate ? parseISO(o.referenceDate) : parseDateSafe(o.createdAt);
-      const targetD = o.targetDeliveryDate ? (o.targetDeliveryDate instanceof Date ? o.targetDeliveryDate : parseDateSafe(o.targetDeliveryDate as any)) : null;
       return [
         format(d, 'MMM dd, yyyy hh:mm a'),
-        targetD ? format(targetD, 'MMM dd, yyyy') : 'N/A',
+        o.targetDeliveryDate || 'N/A',
         o.customerName,
         o.packageName || 'Custom',
         o.packageQuantity || 1,
@@ -513,9 +508,8 @@ export default function AdminDashboard() {
                   <SortTrigger label="Order Given / Ref Date" sortKey="createdAt" />
                   <ColumnFilter placeholder="Filter date..." value={columnFilters.date} onChange={(v) => handleColFilterChange('date', v)} />
                 </TableHead>
-                <TableHead className="font-bold">
-                  <SortTrigger label="Target Delivery Date" sortKey="targetDeliveryDate" />
-                  <ColumnFilter placeholder="Filter target..." value={columnFilters.targetDate} onChange={(v) => handleColFilterChange('targetDate', v)} />
+                <TableHead className="font-bold py-4">
+                  <SortTrigger label="Target Date" sortKey="targetDeliveryDate" />
                 </TableHead>
                 <TableHead className="font-bold">
                   <SortTrigger label="Customer / Rider" sortKey="customerName" />
@@ -557,12 +551,10 @@ export default function AdminDashboard() {
                           {mounted ? format(orderDate, 'hh:mm a') : '...'}
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 font-bold text-sm">
-                        {mounted ? (
-                          parseDateSafe(order.targetDeliveryDate) 
-                            ? format(parseDateSafe(order.targetDeliveryDate)!, 'MMM dd, yyyy') 
-                            : 'N/A'
-                        ) : '...'}
+                      <TableCell className="py-4">
+                        <div className="font-bold text-sm">
+                          {order.targetDeliveryDate || 'N/A'}
+                        </div>
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="font-bold">{order.customerName}</div>
@@ -735,9 +727,9 @@ export default function AdminDashboard() {
             </TableBody>
             <TableFooter className="bg-secondary/10 border-t-2 border-secondary/30">
               <TableRow>
-                <TableCell colSpan={4} className="text-right font-bold py-5">Summary Totals:</TableCell>
+                <TableCell colSpan={3} className="text-right font-bold py-5">Summary Totals:</TableCell>
                 <TableCell className="text-center font-black text-xl text-primary">{totalFilteredQty} Sets</TableCell>
-                <TableCell colSpan={3} className="font-black text-2xl text-accent pl-8">{totalFilteredAmount.toFixed(2)}</TableCell>
+                <TableCell colSpan={4} className="font-black text-2xl text-accent pl-8">{totalFilteredAmount.toFixed(2)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
