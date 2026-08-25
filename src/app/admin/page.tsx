@@ -61,17 +61,17 @@ import { useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking
 import { collection, doc } from 'firebase/firestore';
 import { downloadPDF } from '@/lib/pdf-export';
 
-const parseDateSafe = (d: any): Date => {
-  if (!d) return new Date();
+const parseDateSafe = (d: any): Date | null => {
+  if (!d) return null;
   if (d instanceof Date) return d;
   if (typeof d === 'string') {
     const parsed = parseISO(d);
-    return isValid(parsed) ? parsed : new Date();
+    return isValid(parsed) ? parsed : null;
   }
   if (d && typeof d === 'object' && 'seconds' in d) {
     return new Date(d.seconds * 1000);
   }
-  return new Date();
+  return null;
 };
 
 const ColumnFilter = ({ placeholder, value, onChange }: { placeholder: string, value: string, onChange: (v: string) => void }) => (
@@ -216,7 +216,8 @@ export default function AdminDashboard() {
       const qtyStr = (order.packageQuantity || 1).toString();
       const slotStr = `${order.slot} ${order.deliveryTime}`.toLowerCase();
       const statusStr = order.status.toLowerCase();
-      const targetDateStr = order.targetDeliveryDate ? (order.targetDeliveryDate instanceof Date ? format(order.targetDeliveryDate, 'MMM dd, yyyy') : parseDateSafe(order.targetDeliveryDate as any) instanceof Date ? format(parseDateSafe(order.targetDeliveryDate as any), 'MMM dd, yyyy') : '').toLowerCase() : '';
+      const targetDateObj = parseDateSafe(order.targetDeliveryDate);
+      const targetDateStr = targetDateObj ? format(targetDateObj, 'MMM dd, yyyy').toLowerCase() : '';
 
       return (
         dateStr.includes(columnFilters.date.toLowerCase()) &&
@@ -557,7 +558,11 @@ export default function AdminDashboard() {
                         </div>
                       </TableCell>
                       <TableCell className="py-4 font-bold text-sm">
-                        {order.targetDeliveryDate ? (mounted ? format(parseDateSafe(order.targetDeliveryDate as any), 'MMM dd, yyyy') : '...') : 'N/A'}
+                        {mounted ? (
+                          parseDateSafe(order.targetDeliveryDate) 
+                            ? format(parseDateSafe(order.targetDeliveryDate)!, 'MMM dd, yyyy') 
+                            : 'N/A'
+                        ) : '...'}
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="font-bold">{order.customerName}</div>
