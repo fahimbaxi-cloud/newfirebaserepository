@@ -52,7 +52,7 @@ import {
   FileDown,
   CalendarDays
 } from 'lucide-react';
-import { format, isSameDay, parseISO, isValid } from 'date-fns';
+import { format, isSameDay, parseISO, isValid, parse } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -65,7 +65,11 @@ const parseDateSafe = (d: any): Date => {
   if (!d) return new Date();
   if (d instanceof Date) return d;
   if (typeof d === 'string') {
-    const parsed = parseISO(d);
+    let parsed = parseISO(d);
+    if (!isValid(parsed)) {
+      // Try parsing "August 19, 2026"
+      parsed = parse(d, 'MMMM d, yyyy', new Date());
+    }
     return isValid(parsed) ? parsed : new Date();
   }
   if (d && typeof d === 'object' && 'seconds' in d) {
