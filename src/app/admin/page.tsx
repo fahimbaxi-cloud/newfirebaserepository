@@ -184,7 +184,17 @@ export default function AdminDashboard() {
       if (filterDate) {
         if (order.type === 'Subscription' && order.dailyStatuses) {
             const formattedFilterDate = format(filterDate, 'yyyy-MM-dd');
-            if (!order.dailyStatuses[formattedFilterDate]) matchesDate = false;
+            const dates = Object.keys(order.dailyStatuses);
+            if (dates.length > 0) {
+              const sortedDates = dates.sort(); // String sort works for YYYY-MM-DD
+              const startDate = sortedDates[0];
+              const endDate = sortedDates[sortedDates.length - 1];
+              if (formattedFilterDate < startDate || formattedFilterDate > endDate) {
+                matchesDate = false;
+              }
+            } else {
+              matchesDate = false;
+            }
         } else {
             if (!isSameDay(orderDate, filterDate)) matchesDate = false;
         }
