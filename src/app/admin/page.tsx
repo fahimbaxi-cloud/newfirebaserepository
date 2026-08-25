@@ -179,28 +179,11 @@ export default function AdminDashboard() {
   const filteredOrders = useMemo(() => {
     const safeOrders = orders || [];
     const data = safeOrders.filter(order => {
-      let matchesDate = true;
-      const orderDate = parseDateSafe(order.deliveryDate || order.referenceDate || order.createdAt);
-      if (filterDate) {
-        if (order.type === 'Subscription' && order.dailyStatuses) {
-            const formattedFilterDate = format(filterDate, 'yyyy-MM-dd');
-            const dates = Object.keys(order.dailyStatuses);
-            if (dates.length > 0) {
-              const sortedDates = dates.sort(); // String sort works for YYYY-MM-DD
-              const startDate = sortedDates[0];
-              const endDate = sortedDates[sortedDates.length - 1];
-              if (formattedFilterDate < startDate || formattedFilterDate > endDate) {
-                matchesDate = false;
-              }
-            } else {
-              matchesDate = false;
-            }
-        } else {
-            if (!isSameDay(orderDate, filterDate)) matchesDate = false;
-        }
-      }
+      const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
       
-      if (!matchesDate) return false;
+      if (filterDate && !isSameDay(orderDate, filterDate)) {
+        return false;
+      }
 
       const slotActive = activeFilters.morning || activeFilters.noon;
       const dietaryActive = activeFilters.veg || activeFilters.nonVeg;
@@ -328,7 +311,7 @@ export default function AdminDashboard() {
   const handleExportPDF = () => {
     const head = [['Order Date / Time', 'Customer', 'Package', 'Qty', 'Slot', 'Total', 'Status']];
     const body = filteredOrders.map(o => {
-      const d = parseDateSafe(o.deliveryDate || o.referenceDate || o.createdAt);
+      const d = o.referenceDate ? parseISO(o.referenceDate) : parseDateSafe(o.createdAt);
       return [
         format(d, 'MMM dd, yyyy hh:mm a'),
         o.customerName,
@@ -552,7 +535,7 @@ export default function AdminDashboard() {
                 filteredOrders.map((order) => {
                   const safeUsers = users || [];
                   const assignedRider = order.assignedTo ? safeUsers.find(u => u.id === order.assignedTo) : null;
-                  const orderDate = parseDateSafe(order.deliveryDate || order.referenceDate || order.createdAt);
+                  const orderDate = order.referenceDate ? parseISO(order.referenceDate) : parseDateSafe(order.createdAt);
                   
                   return (
                     <TableRow key={order.id} className="hover:bg-secondary/10 border-b border-secondary/20 last:border-none group">
