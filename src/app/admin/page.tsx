@@ -214,7 +214,9 @@ export default function AdminDashboard() {
 
       if (!slotMatch || !dietaryMatch) return false;
 
-      const dateStr = format(orderDate, 'MMM dd, yyyy').toLowerCase();
+      const orderDateStr = format(orderDate, 'MMM dd, yyyy').toLowerCase();
+      const targetDateStr = order.targetDeliveryDate ? format(parseDateSafe(order.targetDeliveryDate), 'MMM dd, yyyy').toLowerCase() : '';
+      const dateStr = `${orderDateStr} ${targetDateStr}`;
       const customerStr = `${order.customerName} ${order.mobile}`.toLowerCase();
       const packageStr = (order.packageName || '').toLowerCase();
       const qtyStr = (order.packageQuantity || 1).toString();
