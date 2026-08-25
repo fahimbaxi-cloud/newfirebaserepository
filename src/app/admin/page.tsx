@@ -180,9 +180,14 @@ export default function AdminDashboard() {
     const safeOrders = orders || [];
     const data = safeOrders.filter(order => {
       const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
-      
-      if (filterDate && !isSameDay(orderDate, filterDate)) {
-        return false;
+      if (filterDate) {
+        const targetDate = order.targetDeliveryDate ? parseDateSafe(order.targetDeliveryDate) : null;
+        
+        if (targetDate) {
+          if (!isSameDay(targetDate, filterDate)) return false;
+        } else if (!isSameDay(orderDate, filterDate)) {
+          return false;
+        }
       }
 
       const slotActive = activeFilters.morning || activeFilters.noon;
