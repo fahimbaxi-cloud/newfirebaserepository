@@ -93,6 +93,7 @@ export interface Order {
   paymentStatus: PaymentStatus;
   assignedTo?: string; // Delivery boy ID
   referenceDate?: string; // Date when the order was given (Booking Date)
+  deliveryDate?: string; // Specific delivery date for the order
   createdAt: Date;
   dailyStatuses?: Record<string, OrderStatus>;
   dailyItemsOverride?: Record<string, {

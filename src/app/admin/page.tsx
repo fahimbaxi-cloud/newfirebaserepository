@@ -179,11 +179,18 @@ export default function AdminDashboard() {
   const filteredOrders = useMemo(() => {
     const safeOrders = orders || [];
     const data = safeOrders.filter(order => {
-      const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
-      
-      if (filterDate && !isSameDay(orderDate, filterDate)) {
-        return false;
+      let matchesDate = true;
+      const orderDate = parseDateSafe(order.deliveryDate || order.referenceDate || order.createdAt);
+      if (filterDate) {
+        if (order.type === 'Subscription' && order.dailyStatuses) {
+            const formattedFilterDate = format(filterDate, 'yyyy-MM-dd');
+            if (!order.dailyStatuses[formattedFilterDate]) matchesDate = false;
+        } else {
+            if (!isSameDay(orderDate, filterDate)) matchesDate = false;
+        }
       }
+      
+      if (!matchesDate) return false;
 
       const slotActive = activeFilters.morning || activeFilters.noon;
       const dietaryActive = activeFilters.veg || activeFilters.nonVeg;
@@ -311,7 +318,7 @@ export default function AdminDashboard() {
   const handleExportPDF = () => {
     const head = [['Order Date / Time', 'Customer', 'Package', 'Qty', 'Slot', 'Total', 'Status']];
     const body = filteredOrders.map(o => {
-      const d = o.referenceDate ? parseISO(o.referenceDate) : parseDateSafe(o.createdAt);
+      const d = parseDateSafe(o.deliveryDate || o.referenceDate || o.createdAt);
       return [
         format(d, 'MMM dd, yyyy hh:mm a'),
         o.customerName,
@@ -535,7 +542,7 @@ export default function AdminDashboard() {
                 filteredOrders.map((order) => {
                   const safeUsers = users || [];
                   const assignedRider = order.assignedTo ? safeUsers.find(u => u.id === order.assignedTo) : null;
-                  const orderDate = order.referenceDate ? parseISO(order.referenceDate) : parseDateSafe(order.createdAt);
+                  const orderDate = parseDateSafe(order.deliveryDate || order.referenceDate || order.createdAt);
                   
                   return (
                     <TableRow key={order.id} className="hover:bg-secondary/10 border-b border-secondary/20 last:border-none group">
