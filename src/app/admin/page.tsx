@@ -119,7 +119,8 @@ export default function AdminDashboard() {
     package: '',
     qty: '',
     slot: '',
-    status: ''
+    status: '',
+    targetDate: ''
   });
 
   const [filterDate, setFilterDate] = useState<Date | undefined>(undefined);
@@ -215,6 +216,7 @@ export default function AdminDashboard() {
       const qtyStr = (order.packageQuantity || 1).toString();
       const slotStr = `${order.slot} ${order.deliveryTime}`.toLowerCase();
       const statusStr = order.status.toLowerCase();
+      const targetDateStr = order.targetDeliveryDate ? (order.targetDeliveryDate instanceof Date ? format(order.targetDeliveryDate, 'MMM dd, yyyy') : parseDateSafe(order.targetDeliveryDate as any) instanceof Date ? format(parseDateSafe(order.targetDeliveryDate as any), 'MMM dd, yyyy') : '').toLowerCase() : '';
 
       return (
         dateStr.includes(columnFilters.date.toLowerCase()) &&
@@ -222,7 +224,8 @@ export default function AdminDashboard() {
         packageStr.includes(columnFilters.package.toLowerCase()) &&
         qtyStr.includes(columnFilters.qty.toLowerCase()) &&
         slotStr.includes(columnFilters.slot.toLowerCase()) &&
-        statusStr.includes(columnFilters.status.toLowerCase())
+        statusStr.includes(columnFilters.status.toLowerCase()) &&
+        targetDateStr.includes(columnFilters.targetDate.toLowerCase())
       );
     });
 
@@ -299,7 +302,7 @@ export default function AdminDashboard() {
 
   const resetFilters = () => {
     setActiveFilters({ morning: false, noon: false, veg: false, nonVeg: false });
-    setColFilters({ date: '', customer: '', package: '', qty: '', slot: '', status: '' });
+    setColFilters({ date: '', customer: '', package: '', qty: '', slot: '', status: '', targetDate: '' });
     setFilterDate(undefined);
     setSortConfig({ key: 'createdAt', direction: 'desc' });
   };
@@ -309,11 +312,13 @@ export default function AdminDashboard() {
   };
 
   const handleExportPDF = () => {
-    const head = [['Order Date / Time', 'Customer', 'Package', 'Qty', 'Slot', 'Total', 'Status']];
+    const head = [['Order Date / Time', 'Target Date', 'Customer', 'Package', 'Qty', 'Slot', 'Total', 'Status']];
     const body = filteredOrders.map(o => {
       const d = o.referenceDate ? parseISO(o.referenceDate) : parseDateSafe(o.createdAt);
+      const targetD = o.targetDeliveryDate ? (o.targetDeliveryDate instanceof Date ? o.targetDeliveryDate : parseDateSafe(o.targetDeliveryDate as any)) : null;
       return [
         format(d, 'MMM dd, yyyy hh:mm a'),
+        targetD ? format(targetD, 'MMM dd, yyyy') : 'N/A',
         o.customerName,
         o.packageName || 'Custom',
         o.packageQuantity || 1,
@@ -508,6 +513,10 @@ export default function AdminDashboard() {
                   <ColumnFilter placeholder="Filter date..." value={columnFilters.date} onChange={(v) => handleColFilterChange('date', v)} />
                 </TableHead>
                 <TableHead className="font-bold">
+                  <SortTrigger label="Target Delivery Date" sortKey="targetDeliveryDate" />
+                  <ColumnFilter placeholder="Filter target..." value={columnFilters.targetDate} onChange={(v) => handleColFilterChange('targetDate', v)} />
+                </TableHead>
+                <TableHead className="font-bold">
                   <SortTrigger label="Customer / Rider" sortKey="customerName" />
                   <ColumnFilter placeholder="Filter customer..." value={columnFilters.customer} onChange={(v) => handleColFilterChange('customer', v)} />
                 </TableHead>
@@ -546,6 +555,9 @@ export default function AdminDashboard() {
                         <div className="text-[10px] text-primary font-black uppercase tracking-tighter mt-0.5">
                           {mounted ? format(orderDate, 'hh:mm a') : '...'}
                         </div>
+                      </TableCell>
+                      <TableCell className="py-4 font-bold text-sm">
+                        {order.targetDeliveryDate ? (mounted ? format(parseDateSafe(order.targetDeliveryDate as any), 'MMM dd, yyyy') : '...') : 'N/A'}
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="font-bold">{order.customerName}</div>
@@ -718,9 +730,9 @@ export default function AdminDashboard() {
             </TableBody>
             <TableFooter className="bg-secondary/10 border-t-2 border-secondary/30">
               <TableRow>
-                <TableCell colSpan={3} className="text-right font-bold py-5">Summary Totals:</TableCell>
+                <TableCell colSpan={4} className="text-right font-bold py-5">Summary Totals:</TableCell>
                 <TableCell className="text-center font-black text-xl text-primary">{totalFilteredQty} Sets</TableCell>
-                <TableCell colSpan={4} className="font-black text-2xl text-accent pl-8">{totalFilteredAmount.toFixed(2)}</TableCell>
+                <TableCell colSpan={3} className="font-black text-2xl text-accent pl-8">{totalFilteredAmount.toFixed(2)}</TableCell>
               </TableRow>
             </TableFooter>
           </Table>
