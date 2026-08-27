@@ -270,8 +270,16 @@ export default function AdminDashboard() {
       data.sort((a, b) => {
         let valA = (a as any)[sortConfig.key];
         let valB = (b as any)[sortConfig.key];
-        if (valA === undefined) valA = '';
-        if (valB === undefined) valB = '';
+
+        // Handle date fields
+        if (sortConfig.key === 'targetDeliveryDate' || sortConfig.key === 'createdAt' || sortConfig.key === 'referenceDate') {
+          valA = parseDateSafe(valA).getTime();
+          valB = parseDateSafe(valB).getTime();
+        } else {
+          if (valA === undefined) valA = '';
+          if (valB === undefined) valB = '';
+        }
+
         if (valA < valB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
