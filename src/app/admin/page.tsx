@@ -180,9 +180,38 @@ export default function AdminDashboard() {
     }));
   };
 
-  const filteredOrders = useMemo(() => {
+  const expandedOrders = useMemo(() => {
     const safeOrders = orders || [];
-    const data = safeOrders.filter(order => {
+    const expanded: Order[] = [];
+
+    safeOrders.forEach(order => {
+      if (order.type === 'Subscription') {
+        const pkg = allPackages.find(p => p.name === order.packageName);
+        if (pkg && pkg.schemeAssignments) {
+          Object.keys(pkg.schemeAssignments).forEach(date => {
+            const dailyStatus = order.dailyStatuses ? (order.dailyStatuses[date] || order.status) : order.status;
+            
+            expanded.push({
+              ...order,
+              id: `${order.id}_${date}`,
+              targetDeliveryDate: date,
+              status: dailyStatus,
+            });
+          });
+        } else {
+          // If no package/scheme, keep as is
+          expanded.push(order);
+        }
+      } else {
+        // Daily orders kept as is
+        expanded.push(order);
+      }
+    });
+    return expanded;
+  }, [orders, allPackages]);
+
+  const filteredOrders = useMemo(() => {
+    const data = expandedOrders.filter(order => {
       const orderDate = parseDateSafe(order.referenceDate || order.createdAt);
       if (filterDate) {
         const targetDate = order.targetDeliveryDate ? parseDateSafe(order.targetDeliveryDate) : null;
@@ -250,7 +279,8 @@ export default function AdminDashboard() {
     }
 
     return data;
-  }, [orders, activeFilters, filterDate, sortConfig, columnFilters]);
+  }, [expandedOrders, activeFilters, filterDate, sortConfig, columnFilters]);
+
 
   const totalFilteredQty = useMemo(() => {
     return (filteredOrders || []).reduce((sum, order) => sum + (order.packageQuantity || 1), 0);
@@ -261,8 +291,12 @@ export default function AdminDashboard() {
   }, [filteredOrders]);
 
   const handleStatusUpdate = (orderId: string, newStatus: OrderStatus) => {
+    const isExpanded = orderId.includes('_');
+    const actualOrderId = isExpanded ? orderId.split('_')[0] : orderId;
+    const date = isExpanded ? orderId.split('_')[1] : null;
+
     const safeOrders = orders || [];
-    const orderToUpdate = safeOrders.find(o => o.id === orderId);
+    const orderToUpdate = safeOrders.find(o => o.id === actualOrderId);
     if (!orderToUpdate) return;
 
     if (newStatus === 'Assigned') {
@@ -271,26 +305,36 @@ export default function AdminDashboard() {
       return;
     }
 
-    const orderRef = doc(firestore, 'orders', orderId);
-    const update: any = { status: newStatus };
-    if (newStatus === 'Pending') update.assignedTo = null;
+    const orderRef = doc(firestore, 'orders', actualOrderId);
+    let update: any = {};
+    if (orderToUpdate.type === 'Subscription' && date) {
+      update = {
+        [`dailyStatuses.${date}`]: newStatus
+      };
+    } else {
+      update = { status: newStatus };
+      if (newStatus === 'Pending') update.assignedTo = null;
+    }
     
     updateDocumentNonBlocking(orderRef, update);
 
     toast({
       title: "Status Updated",
-      description: `Order #${orderId} is now marked as ${newStatus}.`,
+      description: `Order #${actualOrderId} ${date ? `for ${date} ` : ''}is now marked as ${newStatus}.`,
     });
   };
 
   const handleAssignDelivery = (deliveryBoy: User) => {
     if (!selectedOrder) return;
-    const orderRef = doc(firestore, 'orders', selectedOrder.id);
+    const isExpanded = selectedOrder.id.includes('_');
+    const actualOrderId = isExpanded ? selectedOrder.id.split('_')[0] : selectedOrder.id;
+    
+    const orderRef = doc(firestore, 'orders', actualOrderId);
     updateDocumentNonBlocking(orderRef, { status: 'Assigned', assignedTo: deliveryBoy.id });
     
     toast({
       title: "Delivery Assigned",
-      description: `Order #${selectedOrder.id} assigned to ${deliveryBoy.firstName}.`,
+      description: `Order #${actualOrderId} assigned to ${deliveryBoy.firstName}.`,
     });
     setIsAssignOpen(false);
   };
