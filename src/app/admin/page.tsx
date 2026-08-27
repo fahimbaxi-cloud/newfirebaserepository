@@ -130,7 +130,7 @@ export default function AdminDashboard() {
   const [statsDate, setStatsDate] = useState<Date | undefined>(undefined);
   const [isFilterDatePickerOpen, setIsFilterDatePickerOpen] = useState(false);
   const [isStatsDatePickerOpen, setIsStatsDatePickerOpen] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' | null }>({ key: 'createdAt', direction: 'desc' });
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' | null }>({ key: 'targetDeliveryDate', direction: 'desc' });
 
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedOrderForMealChange, setSelectedOrderForMealChange] = useState<Order | null>(null);
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
     setActiveFilters({ morning: false, noon: false, veg: false, nonVeg: false });
     setColFilters({ date: '', customer: '', package: '', qty: '', slot: '', status: '' });
     setFilterDate(undefined);
-    setSortConfig({ key: 'createdAt', direction: 'desc' });
+    setSortConfig({ key: 'targetDeliveryDate', direction: 'desc' });
   };
 
   const handlePrint = () => {
