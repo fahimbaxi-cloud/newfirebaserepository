@@ -175,48 +175,67 @@ export default function CustomerHome() {
 
   const filteredDailyPackages = useMemo(() => {
     if (!allPackages) return [];
-    if (!dailyStartDate || !dailyEndDate) return allPackages.filter(p => p.type === 'daily');
     
-    return allPackages.filter(p => {
-      if (p.type !== 'daily') return false;
-      const pDate = parse(p.dateContext, 'MMMM d, yyyy', new Date());
-      return pDate >= dailyStartDate && pDate <= dailyEndDate;
+    let filtered = allPackages.filter(p => p.type === 'daily');
+    
+    if (dailyStartDate && dailyEndDate) {
+      filtered = filtered.filter(p => {
+        const pDate = parse(p.dateContext, 'MMMM d, yyyy', new Date());
+        return pDate >= dailyStartDate && pDate <= dailyEndDate;
+      });
+    }
+
+    return filtered.sort((a, b) => {
+      const dateA = parse(a.dateContext, 'MMMM d, yyyy', new Date());
+      const dateB = parse(b.dateContext, 'MMMM d, yyyy', new Date());
+      return dateB.getTime() - dateA.getTime();
     });
   }, [dailyStartDate, dailyEndDate, allPackages]);
 
   const filteredSchemePackages = useMemo(() => {
     if (!allPackages) return [];
     
-    return allPackages.filter(pkg => {
-      if (pkg.type !== 'scheme' && pkg.type !== 'monthly') return false;
-      
-      // If no filter, show all
-      if (!schemeStartDate || !schemeEndDate) return true;
+    let filtered = allPackages.filter(pkg => pkg.type === 'scheme' || pkg.type === 'monthly');
 
-      if (!pkg.startDate || !pkg.endDate) return false;
-      const pStart = new Date(pkg.startDate);
-      const pEnd = new Date(pkg.endDate);
-      // Overlap logic: Scheme interval [pStart, pEnd] overlaps with user interval [schemeStartDate, schemeEndDate]
-      return pStart <= schemeEndDate && pEnd >= schemeStartDate;
+    if (schemeStartDate && schemeEndDate) {
+      filtered = filtered.filter(pkg => {
+        if (!pkg.startDate || !pkg.endDate) return false;
+        const pStart = new Date(pkg.startDate);
+        const pEnd = new Date(pkg.endDate);
+        // Overlap logic: Scheme interval [pStart, pEnd] overlaps with user interval [schemeStartDate, schemeEndDate]
+        return pStart <= schemeEndDate && pEnd >= schemeStartDate;
+      });
+    }
+
+    return filtered.sort((a, b) => {
+      const dateA = new Date(a.startDate || 0);
+      const dateB = new Date(b.startDate || 0);
+      return dateB.getTime() - dateA.getTime();
     });
   }, [allPackages, schemeStartDate, schemeEndDate]);
 
   const filteredAllPackages = useMemo(() => {
     if (!allPackages) return [];
-    if (!allStartDate || !allEndDate) return allPackages;
     
-    return allPackages.filter(pkg => {
-      if (pkg.type === 'daily') {
-        const pDate = parse(pkg.dateContext, 'MMMM d, yyyy', new Date());
-        return pDate >= allStartDate && pDate <= allEndDate;
-      } else if (pkg.type === 'scheme' || pkg.type === 'monthly') {
-        if (!pkg.startDate || !pkg.endDate) return false;
-        const pStart = new Date(pkg.startDate);
-        const pEnd = new Date(pkg.endDate);
-        return pStart <= allEndDate && pEnd >= allStartDate;
-      }
-      return true;
-    });
+    let filtered = allPackages;
+    if (allStartDate && allEndDate) {
+      filtered = filtered.filter(pkg => {
+        if (pkg.type === 'daily') {
+          const pDate = parse(pkg.dateContext, 'MMMM d, yyyy', new Date());
+          return pDate >= allStartDate && pDate <= allEndDate;
+        } else if (pkg.type === 'scheme' || pkg.type === 'monthly') {
+          if (!pkg.startDate || !pkg.endDate) return false;
+          const pStart = new Date(pkg.startDate);
+          const pEnd = new Date(pkg.endDate);
+          return pStart <= allEndDate && pEnd >= allStartDate;
+        }
+        return true;
+      });
+    }
+
+    const getDate = (p: BroadcastPackage) => p.type === 'daily' ? parse(p.dateContext, 'MMMM d, yyyy', new Date()) : new Date(p.startDate || 0);
+    
+    return filtered.sort((a, b) => getDate(b).getTime() - getDate(a).getTime());
   }, [allPackages, allStartDate, allEndDate]);
 
   const upcomingOrder = useMemo(() => {
